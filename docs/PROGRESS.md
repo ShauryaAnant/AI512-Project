@@ -4,7 +4,7 @@
 |---|---|---|---|---|
 | **Phase 0** | Environment & repo bootstrap | ✅ | 2026-11-05 | `.gitignore`, directory structure, `.venv` with Python 3.12.10, PyTorch 2.14.1, `docs/vmunet_notes.md`, `docs/hardware.md` |
 | **Phase 1** | Understand & integrate supplied model | ✅ | 2026-11-05 | `src/models/model.py` (`build_model`), `tests/test_model.py`, `docs/model_notes.md`, `docs/DEVIATIONS.md` |
-| **Phase 2** | ACDC night data audit | ⏳ Pending | | `scripts/audit_dataset.py`, `docs/dataset_audit.md`, `data/processed/illum_stats.csv` |
+| **Phase 2** | ACDC night data audit | ✅ | 2026-11-05 | `scripts/audit_dataset.py`, `docs/dataset_audit.md`, `data/processed/illum_stats.csv`, `docs/figures/` |
 | **Phase 3** | Evaluation protocol & split generation | ⏳ Pending | | `docs/protocol.md`, `splits/*.txt` |
 | **Phase 4** | Dataset loader & preprocessing | ⏳ Pending | | `src/datasets/acdc.py`, `src/datasets/transforms.py`, tests |
 | **Phase 5** | Loss, metrics & efficiency tooling | ⏳ Pending | | `src/losses.py`, `src/metrics.py`, `src/utils/flops.py`, `scripts/benchmark_speed.py` |
