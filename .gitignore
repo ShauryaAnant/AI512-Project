@@ -1,0 +1,36 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Data and dataset directories (ACDC images and labels must NEVER be committed per license)
+dataset/
+data/raw/
+data/processed/
+
+# Checkpoints and model weights
+*.pth
+*.pt
+*.onnx
+*.bin
+
+# Runs and checkpoints (except results.json and small figures)
+runs/*/checkpoints/
+runs/*/*.pth
+runs/*/*.log
+
+# IDE & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Kaggle / temporary downloads
+*.tar.gz
+*.zip
+*.tar
