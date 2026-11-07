@@ -6,7 +6,7 @@
 | **Phase 1** | Understand & integrate supplied model | ✅ | 2026-11-05 | `src/models/model.py` (`build_model`), `tests/test_model.py`, `docs/model_notes.md`, `docs/DEVIATIONS.md` |
 | **Phase 2** | ACDC night data audit | ✅ | 2026-11-05 | `scripts/audit_dataset.py`, `docs/dataset_audit.md`, `data/processed/illum_stats.csv`, `docs/figures/` |
 | **Phase 3** | Evaluation protocol & split generation | ✅ | 2026-11-07 | `scripts/make_splits.py`, `splits/*.txt`, `docs/protocol.md` |
-| **Phase 4** | Dataset loader & preprocessing | ⏳ Pending | | `src/datasets/acdc.py`, `src/datasets/transforms.py`, tests |
+| **Phase 4** | Dataset loader & preprocessing | ✅ | 2026-11-07 | `src/datasets/acdc.py`, `src/datasets/transforms.py`, `tests/test_dataset.py` |
 | **Phase 5** | Loss, metrics & efficiency tooling | ⏳ Pending | | `src/losses.py`, `src/metrics.py`, `src/utils/flops.py`, `scripts/benchmark_speed.py` |
 | **Phase 6** | `train.py` and `inference.py` | ⏳ Pending | | `train.py`, `inference.py`, smoke test |
 | **Phase 7** | Baseline reproduction (ACDC Night, 3 seeds) | ⏳ Pending | | `results/baseline/*.json`, `docs/baseline_results.md` |
