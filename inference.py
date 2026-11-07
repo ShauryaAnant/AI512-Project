@@ -6,7 +6,12 @@ and colorized visualizations at original 1920x1080 resolution, and outputs resul
 
 import argparse
 import json
+import sys
 from pathlib import Path
+
+# Ensure repo root is in Python search path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
 import yaml
 import numpy as np
 import torch

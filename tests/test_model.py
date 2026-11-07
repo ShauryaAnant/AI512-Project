@@ -1,5 +1,11 @@
 """Unit tests for Model architecture and shape contracts."""
 
+import sys
+from pathlib import Path
+
+# Ensure repo root is always in Python search path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 try:
     import pytest
 except ImportError:

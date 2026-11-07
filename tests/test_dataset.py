@@ -1,5 +1,11 @@
 """Unit tests for ACDCDataset, transforms, and DataLoader."""
 
+import sys
+from pathlib import Path
+
+# Ensure repo root is always in Python search path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import torch
 from src.datasets.acdc import ACDCDataset, build_dataloader
 from src.datasets.transforms import get_test_transforms, get_train_transforms

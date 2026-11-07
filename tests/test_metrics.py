@@ -1,6 +1,12 @@
 """Unit tests for losses and evaluation metrics."""
 
 import math
+import sys
+from pathlib import Path
+
+# Ensure repo root is always in Python search path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import numpy as np
 import torch
 
