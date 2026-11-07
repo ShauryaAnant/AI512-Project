@@ -37,6 +37,16 @@ class ACDCDataset(Dataset):
         self.transforms = transforms
         self.return_metadata = return_metadata
 
+        # Auto-detect actual data root if nested inside subfolders (e.g. on Kaggle)
+        if self.data_root.exists() and not (self.data_root / "rgb_anon" / "rgb_anon").exists():
+            for candidate in self.data_root.rglob("rgb_anon"):
+                if candidate.is_dir() and (candidate / "rgb_anon" / "night").exists():
+                    self.data_root = candidate.parent
+                    break
+                elif candidate.is_dir() and (candidate / "night").exists():
+                    self.data_root = candidate.parent.parent
+                    break
+
         if not self.split_file.exists():
             raise FileNotFoundError(f"Split file not found: {self.split_file}")
 
