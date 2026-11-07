@@ -187,6 +187,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch-size", type=int, default=None, help="Override batch size")
     parser.add_argument("--data-root", type=str, default=None, help="Override dataset root")
     parser.add_argument("--out-dir", type=str, default=None, help="Override output directory")
+    parser.add_argument("--seed", type=int, default=None, help="Override random seed")
     parser.add_argument("--resume", action="store_true", help="Resume from last checkpoint")
     args = parser.parse_args()
 
@@ -203,5 +204,7 @@ if __name__ == "__main__":
         config["dataset"]["data_root"] = args.data_root
     if args.out_dir is not None:
         config["training"]["out_dir"] = args.out_dir
+    if args.seed is not None:
+        config["training"]["seed"] = args.seed
 
     train(config, resume=args.resume)
