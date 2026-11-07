@@ -1,0 +1,30 @@
+# Baseline configuration for ACDC Night semantic segmentation
+# Model: Supplied VM-UNet hybrid Mamba architecture
+# Protocol: Supervised on 400 ACDC night images, evaluated on 106 test images
+
+dataset:
+  data_root: "dataset"
+  splits_dir: "splits"
+  crop_size: [512, 512]
+  eval_size: [512, 1024]
+  num_classes: 19
+  ignore_index: 255
+
+model:
+  num_classes: 19
+  input_channels: 3
+  c_list: [8, 16, 24, 32, 48, 64]
+
+training:
+  epochs: 300
+  lr: 0.01
+  min_lr: 0.000001
+  weight_decay: 0.0001
+  batch_size: 4
+  num_workers: 2
+  seed: 42
+  clip_grad: 1.0
+  ce_weight: 1.0
+  dice_weight: 1.0
+  amp: false
+  out_dir: "runs/baseline_acdc_night"

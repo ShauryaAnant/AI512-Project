@@ -93,6 +93,7 @@ class ACDCDataset(Dataset):
                 "sequence": item["sequence"],
                 "stem": item["stem"],
                 "rgb_path": rgb_path,
+                "gt_path": gt_path,
             }
             if mask_tensor is not None:
                 return img_tensor, mask_tensor, meta
