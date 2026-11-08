@@ -1,10 +1,15 @@
 """Training and evaluation engine loops."""
 
-from typing import Any, Dict, Optional, Tuple
 import logging
+from typing import Any, Dict, Optional, Tuple
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
+
+try:
+    from tqdm import tqdm
+except ImportError:
+    tqdm = lambda x, **kwargs: x
 
 from src.metrics import MetricTracker
 
@@ -41,7 +46,14 @@ def train_one_epoch(
     total_grad_norm = 0.0
     num_batches = len(dataloader)
 
-    for step, batch in enumerate(dataloader):
+    pbar = tqdm(
+        dataloader,
+        desc=f"Train Ep [{epoch + 1:03d}]",
+        leave=False,
+        dynamic_ncols=True,
+    )
+
+    for step, batch in enumerate(pbar):
         images, targets, _ = batch
         images = images.to(device, non_blocking=True)
         targets = targets.to(device, non_blocking=True)
@@ -74,6 +86,8 @@ def train_one_epoch(
             raise ValueError(f"Divergence detected: loss is {loss_val} at epoch {epoch}, step {step}")
 
         total_loss += loss_val
+        running_avg = total_loss / (step + 1)
+        pbar.set_postfix({"loss": f"{loss_val:.4f}", "avg": f"{running_avg:.4f}"})
 
     avg_loss = total_loss / max(num_batches, 1)
     avg_norm = total_grad_norm / max(num_batches, 1)
@@ -105,7 +119,9 @@ def evaluate(
     total_loss = 0.0
     num_batches = len(dataloader)
 
-    for batch in dataloader:
+    pbar = tqdm(dataloader, desc="Evaluating", leave=False, dynamic_ncols=True)
+
+    for batch in pbar:
         images, targets, _ = batch
         images = images.to(device, non_blocking=True)
         targets = targets.to(device, non_blocking=True)
