@@ -33,6 +33,7 @@ def run_inference(
     save_preds: bool = True,
     save_color: bool = True,
     out_dir: str = None,
+    data_root: str = None,
 ):
     with open(config_path, "r", encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
@@ -57,21 +58,27 @@ def run_inference(
     # Load model & weights
     model = build_model(cfg=cfg)
     model.to(device)
-    load_checkpoint(ckpt_path, model, device=device)
+    ckpt = load_checkpoint(ckpt_path, model, device=device)
     model.eval()
 
-    # Load dataset
-    data_root = ds_cfg.get("data_root", "dataset")
+    # Load dataset with robust data_root resolution
+    if data_root is not None:
+        actual_data_root = data_root
+    elif "config" in ckpt and "dataset" in ckpt["config"] and "data_root" in ckpt["config"]["dataset"]:
+        actual_data_root = ckpt["config"]["dataset"]["data_root"]
+    else:
+        actual_data_root = ds_cfg.get("data_root", "dataset")
+
     splits_dir = ds_cfg.get("splits_dir", "splits")
     eval_size = tuple(ds_cfg.get("eval_size", [512, 1024]))
 
     dataset = ACDCDataset(
         split_file=f"{splits_dir}/test.txt",
-        data_root=data_root,
+        data_root=actual_data_root,
         transforms=get_test_transforms(eval_size=eval_size),
         return_metadata=True,
     )
-    print(f"Evaluating {len(dataset)} test images...")
+    print(f"Evaluating {len(dataset)} test images from data root: {actual_data_root}...")
 
     tracker = MetricTracker(num_classes=19, ignore_index=255)
 
@@ -162,6 +169,7 @@ if __name__ == "__main__":
     parser.add_argument("--config", type=str, default="configs/baseline_acdc_night.yaml", help="Path to config file")
     parser.add_argument("--checkpoint", type=str, required=True, help="Path to checkpoint (.pth)")
     parser.add_argument("--out-dir", type=str, default=None, help="Output directory")
+    parser.add_argument("--data-root", type=str, default=None, help="Override dataset root path")
     args = parser.parse_args()
 
-    run_inference(args.config, args.checkpoint, out_dir=args.out_dir)
+    run_inference(args.config, args.checkpoint, out_dir=args.out_dir, data_root=args.data_root)
