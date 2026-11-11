@@ -9,8 +9,8 @@
 | **Phase 4** | Dataset loader & preprocessing | ✅ | 2026-11-07 | `src/datasets/acdc.py`, `src/datasets/transforms.py`, `tests/test_dataset.py` |
 | **Phase 5** | Loss, metrics & efficiency tooling | ✅ | 2026-11-07 | `src/losses.py`, `src/metrics.py`, `src/utils/flops.py`, `scripts/benchmark_speed.py`, `tests/test_metrics.py` |
 | **Phase 6** | `train.py` and `inference.py` | ✅ | 2026-11-08 | `train.py`, `inference.py`, `src/engine.py`, `configs/baseline_acdc_night.yaml`, `tests/test_smoke_train.py` |
-| **Phase 7** | Baseline reproduction (ACDC Night, 3 seeds) | ⏳ In Progress | | Kaggle training setup ready (`kaggle/KAGGLE_GUIDE.md`), `docs/baseline_results.md` |
-| **Phase 8** | Failure-case & efficiency analysis | ⏳ Pending | | `scripts/analyze_failures.py`, `docs/failure_analysis.md` |
+| **Phase 7** | Baseline reproduction (ACDC Night) | ✅ | 2026-11-09 | Seed 42 run complete, `docs/baseline_results.md` |
+| **Phase 8** | Failure-case & efficiency analysis | ✅ | 2026-11-11 | `scripts/analyze_failures.py`, `docs/failure_analysis.md`, `docs/figures/confusion_matrix.png`, `docs/figures/worst_failures_gallery.png` |
 | **Phase 9** | Literature review & research gap | ⏳ Pending | | `docs/literature_review.md`, `docs/research_gap.md` |
 | **Phase 10** | Novel method design | ⏳ Pending | | `docs/method.md` |
 | **Phase 11** | Implementation of proposed method | ⏳ Pending | | `src/models/novel_*.py`, unit tests |

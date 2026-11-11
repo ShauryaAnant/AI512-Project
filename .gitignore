@@ -19,8 +19,10 @@ data/processed/
 *.onnx
 *.bin
 
-# Runs and checkpoints (except results.json and small figures)
+# Runs and checkpoints (keep metrics.csv and results.json, ignore large dumps)
 runs/*/checkpoints/
+runs/*/eval/preds/
+runs/*/eval/color_preds/
 runs/*/*.pth
 runs/*/*.log
 
