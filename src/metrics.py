@@ -160,8 +160,22 @@ class MetricTracker:
         specificity_macro = float(np.mean(valid_spec)) if valid_spec else 0.0
         pixel_acc = float(np.sum(tp) / total_pixels) if total_pixels > 0 else 0.0
 
+        # Frequency-Weighted IoU (FWIoU): sum(t_c * IoU_c) / sum(t_c)
+        gt_pixels_per_class = tp + fn
+        total_gt_pixels = np.sum(gt_pixels_per_class)
+        if total_gt_pixels > 0:
+            weighted_ious = [
+                gt_pixels_per_class[c] * (tp[c] / union[c])
+                for c in range(self.num_classes)
+                if union[c] > 0 and gt_pixels_per_class[c] > 0
+            ]
+            fwiou = float(np.sum(weighted_ious) / total_gt_pixels)
+        else:
+            fwiou = 0.0
+
         return {
             "mIoU": miou,
+            "FWIoU": fwiou,
             "per_class_IoU": per_class_iou,
             "dice_mean": dice_mean,
             "per_class_dice": per_class_dice,

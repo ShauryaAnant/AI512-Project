@@ -166,6 +166,17 @@ class ToTensorNormalize:
         return img_tensor, mask_tensor
 
 
+def get_post_crop_transforms(color_jitter: bool = True) -> Compose:
+    """Post-crop spatial & photometric augmentations for Rare-Class Sampling."""
+    transforms = [
+        RandomHorizontalFlip(p=0.5),
+    ]
+    if color_jitter:
+        transforms.append(ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2))
+    transforms.append(ToTensorNormalize())
+    return Compose(transforms)
+
+
 def get_train_transforms(
     crop_size: Tuple[int, int] = (512, 512),
     scale_range: Tuple[float, float] = (0.75, 1.25),

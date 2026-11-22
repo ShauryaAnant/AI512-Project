@@ -59,6 +59,11 @@ def train(cfg: dict, resume: bool = False):
     crop_size = tuple(ds_cfg.get("crop_size", [512, 512]))
     eval_size = tuple(ds_cfg.get("eval_size", [512, 1024]))
 
+    # RCS settings
+    rcs_enabled = train_cfg.get("rcs_enabled", False)
+    rcs_prob = train_cfg.get("rcs_prob", 0.5)
+    rcs_stats_file = train_cfg.get("rcs_stats_file", "data/processed/rcs_training_stats.json")
+
     train_loader = build_dataloader(
         split="train",
         data_root=data_root,
@@ -67,6 +72,9 @@ def train(cfg: dict, resume: bool = False):
         num_workers=num_workers,
         crop_size=crop_size,
         eval_size=eval_size,
+        rcs_enabled=rcs_enabled,
+        rcs_prob=rcs_prob,
+        rcs_stats_file=rcs_stats_file,
     )
 
     test_loader = build_dataloader(
@@ -118,7 +126,7 @@ def train(cfg: dict, resume: bool = False):
     csv_file = open(metrics_csv, "a", newline="", encoding="utf-8")
     csv_writer = csv.writer(csv_file)
     if not csv_exists:
-        csv_writer.writerow(["epoch", "lr", "train_loss", "grad_norm", "test_loss", "test_mIoU", "test_pixel_acc"])
+        csv_writer.writerow(["epoch", "lr", "train_loss", "grad_norm", "test_loss", "test_mIoU", "test_pixel_acc", "test_fwiou"])
         csv_file.flush()
 
     # Training loop
@@ -148,6 +156,7 @@ def train(cfg: dict, resume: bool = False):
         )
 
         test_miou = test_metrics["mIoU"]
+        test_fwiou = test_metrics.get("FWIoU", 0.0)
         test_pix_acc = test_metrics["pixel_acc"]
         elapsed = time.time() - t0
 
@@ -158,11 +167,11 @@ def train(cfg: dict, resume: bool = False):
         logger.info(
             f"Epoch [{epoch + 1:03d}/{epochs:03d}] "
             f"Loss: {train_loss:.4f} | Test mIoU: {test_miou * 100:.2f}% (Best: {best_test_miou * 100:.2f}%) | "
-            f"PixAcc: {test_pix_acc * 100:.2f}% | LR: {curr_lr:.6f} | Time: {elapsed:.1f}s"
+            f"FWIoU: {test_fwiou * 100:.2f}% | PixAcc: {test_pix_acc * 100:.2f}% | LR: {curr_lr:.6f} | Time: {elapsed:.1f}s"
         )
 
         # Log to CSV
-        csv_writer.writerow([epoch + 1, curr_lr, train_loss, grad_norm, test_loss, test_miou, test_pix_acc])
+        csv_writer.writerow([epoch + 1, curr_lr, train_loss, grad_norm, test_loss, test_miou, test_pix_acc, test_fwiou])
         csv_file.flush()
 
         # Save checkpoint

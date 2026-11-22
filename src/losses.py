@@ -9,6 +9,8 @@ Includes:
 6. build_loss(cfg): Factory function selecting baseline or BOLT loss based on config.
 """
 
+import json
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 import numpy as np
 import torch
@@ -37,6 +39,25 @@ ACDC_NIGHT_TRAIN_PIXELS = [
     345828,     # 17: motorcycle (0.04%)
     651240,     # 18: bicycle (0.08%)
 ]
+
+
+def get_rcs_mild_class_weights(json_path: str = "data/processed/rcs_training_stats.json") -> torch.Tensor:
+    """Load or compute mild inverse-square-root class weights: w_c ~ 1 / sqrt(f_c) clipped at 5.0."""
+    p = Path(json_path)
+    if not p.exists():
+        p = Path(__file__).resolve().parent.parent / json_path
+    if p.exists():
+        with open(p, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            weights = np.array(data["mild_class_weights"], dtype=np.float32)
+            return torch.from_numpy(weights)
+
+    fallback = [
+        0.1970, 0.1970, 0.1970, 0.3983, 0.4670, 0.5331, 1.1282, 0.8481,
+        0.1970, 0.6405, 0.1970, 1.3479, 2.6194, 0.3548, 3.5479, 1.1300,
+        0.6100, 2.5393, 1.8504
+    ]
+    return torch.tensor(fallback, dtype=torch.float32)
 
 
 def get_acdc_class_weights(c_smooth: float = 1.02, num_classes: int = 19) -> torch.Tensor:
@@ -322,6 +343,30 @@ def build_loss(cfg: Dict[str, Any]) -> nn.Module:
     ignore_index = ds_cfg.get("ignore_index", 255)
 
     loss_type = train_cfg.get("loss_type", "baseline").lower()
+
+    if loss_type == "rcs":
+        # Step 2: Mild Class-Weighted CE + Soft-Dice
+        mild_weights = get_rcs_mild_class_weights()
+        boundary_weight = train_cfg.get("boundary_weight", 0.0)
+        if boundary_weight > 0:
+            return BOLTLoss(
+                num_classes=num_classes,
+                ignore_index=ignore_index,
+                ce_weight=train_cfg.get("ce_weight", 1.0),
+                dice_weight=train_cfg.get("dice_weight", 1.0),
+                boundary_weight=boundary_weight,
+                use_class_weights=True,
+                use_ohem=False,
+                use_boundary_loss=True,
+            )
+        else:
+            return CombinedLoss(
+                num_classes=num_classes,
+                ignore_index=ignore_index,
+                ce_weight=train_cfg.get("ce_weight", 1.0),
+                dice_weight=train_cfg.get("dice_weight", 1.0),
+                class_weights=mild_weights,
+            )
 
     if loss_type in ["bolt", "boundary"]:
         return BOLTLoss(

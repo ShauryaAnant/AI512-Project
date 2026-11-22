@@ -72,8 +72,28 @@ def test_dataloader_batch():
     print("test_dataloader_batch passed!")
 
 
+def test_rcs_sampling():
+    """Verify Rare-Class Sampling returns valid cropped shapes."""
+    ds = ACDCDataset(
+        split_file="splits/train.txt",
+        data_root="dataset",
+        transforms=get_train_transforms(crop_size=(256, 256)),
+        return_metadata=True,
+        rcs_enabled=True,
+        rcs_prob=1.0,  # Force RCS on every call
+        rcs_stats_file="data/processed/rcs_training_stats.json",
+        crop_size=(256, 256),
+    )
+    for _ in range(5):
+        img, mask, meta = ds[0]
+        assert img.shape == (3, 256, 256), f"Expected (3, 256, 256), got {img.shape}"
+        assert mask.shape == (256, 256), f"Expected (256, 256), got {mask.shape}"
+    print("test_rcs_sampling passed!")
+
+
 if __name__ == "__main__":
     test_dataset_item()
     test_eval_transforms()
     test_dataloader_batch()
+    test_rcs_sampling()
     print("All Phase 4 dataset and DataLoader tests passed successfully!")

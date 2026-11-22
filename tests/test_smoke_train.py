@@ -7,8 +7,13 @@ Verifies:
 4. Inference execution and results.json export.
 """
 
+import sys
 from pathlib import Path
 import shutil
+
+# Ensure repo root is in Python search path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import torch
 import torch.optim as optim
 

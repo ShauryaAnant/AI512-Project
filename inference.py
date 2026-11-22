@@ -158,6 +158,7 @@ def run_inference(
 
     print("\n=== Evaluation Results ===")
     print(f"Test mIoU:      {metrics['mIoU'] * 100:.2f}%")
+    print(f"FWIoU:          {metrics.get('FWIoU', 0.0) * 100:.2f}%")
     print(f"Dice Mean:      {metrics['dice_mean'] * 100:.2f}%")
     print(f"Pixel Accuracy: {metrics['pixel_acc'] * 100:.2f}%")
     print(f"Results saved to: {results_path}")
