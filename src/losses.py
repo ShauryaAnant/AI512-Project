@@ -190,13 +190,13 @@ class ClassWeightedBoundaryLoss(nn.Module):
         self.ignore_index = ignore_index
         self.focal_gamma = focal_gamma
 
-        # Class importance multipliers beta_c
-        # 5.0 for vehicles and humans, 3.0 for thin traffic objects, 1.0 for background
+        # Class importance multipliers beta_c (gentle multipliers to prevent gradient instability)
+        # 3.0 for vehicles and humans, 2.0 for thin traffic objects, 1.0 for background
         beta = torch.ones(num_classes, dtype=torch.float32)
-        # Vehicles & humans (small/rare objects with zero recall)
-        beta[[11, 12, 13, 14, 15, 16, 17, 18]] = 5.0
-        # Thin traffic objects
-        beta[[4, 5, 6, 7]] = 3.0
+        # Vehicles & humans (small/rare objects with zero recall: person, rider, car, truck, bus, train, motorcycle, bicycle)
+        beta[[11, 12, 13, 14, 15, 16, 17, 18]] = 3.0
+        # Thin traffic objects (fence, pole, traffic light, traffic sign)
+        beta[[4, 5, 6, 7]] = 2.0
         self.register_buffer("beta", beta)
 
     def extract_boundary(self, targets: torch.Tensor) -> torch.Tensor:
@@ -323,17 +323,17 @@ def build_loss(cfg: Dict[str, Any]) -> nn.Module:
 
     loss_type = train_cfg.get("loss_type", "baseline").lower()
 
-    if loss_type == "bolt":
+    if loss_type in ["bolt", "boundary"]:
         return BOLTLoss(
             num_classes=num_classes,
             ignore_index=ignore_index,
             ce_weight=train_cfg.get("ce_weight", 1.0),
             dice_weight=train_cfg.get("dice_weight", 1.0),
-            boundary_weight=train_cfg.get("boundary_weight", 1.0),
+            boundary_weight=train_cfg.get("boundary_weight", 0.2),
             ohem_ratio=train_cfg.get("ohem_ratio", 0.5),
             min_kept=train_cfg.get("min_kept", 10000),
-            use_class_weights=train_cfg.get("use_class_weights", True),
-            use_ohem=train_cfg.get("use_ohem", True),
+            use_class_weights=train_cfg.get("use_class_weights", False),
+            use_ohem=train_cfg.get("use_ohem", False),
             use_boundary_loss=train_cfg.get("use_boundary_loss", True),
         )
     else:

@@ -1,6 +1,6 @@
-# Novel BOLT-Loss configuration for ACDC Night semantic segmentation
-# Method: BOLT (Boundary-aware Online-hard-example Loss with Class-Rebalanced Tuning)
-# Core Novelty: Class-Weighted Boundary Loss + Inverse-Frequency Rebalancing + OHEM
+# Pure Gentle Boundary Loss Configuration for ACDC Night
+# Formulation: Standard Cross-Entropy (1.0) + Soft-Dice (1.0) + Gentle Boundary Loss (0.2)
+# Direct test of mentor's hypothesis without OHEM or class-weight distortion
 # Zero inference overhead: Exactly 26,975 parameters, 1.02 GFLOPs at 1080p
 
 dataset:
@@ -27,15 +27,13 @@ training:
   seed: 42
   clip_grad: 1.0
   amp: false
-  out_dir: "runs/novel_bolt_seed42"
+  out_dir: "runs/novel_boundary_seed42"
 
-  # BOLT Novel Loss Formulation
-  loss_type: "bolt"
+  # Novel Loss Formulation: Pure Gentle Boundary Loss (lambda = 0.2)
+  loss_type: "boundary"
   ce_weight: 1.0
   dice_weight: 1.0
-  boundary_weight: 1.0
-  use_class_weights: true
-  use_ohem: true
-  ohem_ratio: 0.5
-  min_kept: 10000
+  boundary_weight: 0.2
+  use_class_weights: false
+  use_ohem: false
   use_boundary_loss: true
