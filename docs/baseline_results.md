@@ -1,28 +1,29 @@
 # Baseline Reproduction Results (ACDC Night)
 
 **Architecture:** Supplied Mamba U-Net (`src/models/model.py`)  
-**Hyperparameters:** 300 epochs, initial $lr = 0.01$, AdamW optimizer, CosineAnnealingLR  
+**Hyperparameters:** 300 epochs, initial lr = 0.01, AdamW optimizer, CosineAnnealingLR  
 **Loss:** Combined Multi-Class Cross-Entropy (`ignore_index=255`) + Soft-Dice Loss  
 **Hardware:** Kaggle NVIDIA Tesla T4 GPU (16GB)  
 **Dataset Split:** Supervised training on 400 ACDC Night images; evaluated on 106 test images  
+**Batch Size:** 4 (with `drop_last=True`, yielding 100 training batches per epoch = all 400 images used)  
+**Training Crop:** 512 × 512 random crop with scale jitter [0.75, 1.25]  
+**Evaluation Resolution:** 512 × 1024 (resized from native 1920 × 1080)  
 
 ---
 
 ## 1. Overall Baseline Benchmark Table
 
-| Run ID / Seed | Epochs | Test mIoU (%) | Dice Mean (%) | Pixel Accuracy (%) | mPA / Sensitivity (%) | Specificity Macro (%) | Params (M) | GFLOPs (1080p) | Latency (ms) | FPS |
-|---|---|---|---|---|---|---|---|---|---|---|
-| **Seed 42** | 300 | 20.70% | 27.16% | 73.70% | 36.49% | 98.38% | 0.0270 | 1.02 | ~11.5 ms | ~87.0 |
-| **Seed 1337** | 300 | Pending | Pending | Pending | Pending | Pending | 0.0270 | 1.02 | ~11.5 ms | ~87.0 |
-| **Seed 2026** | 300 | Pending | Pending | Pending | Pending | Pending | 0.0270 | 1.02 | ~11.5 ms | ~87.0 |
+| Run ID / Seed | Epochs | Train mIoU Best (%) | Test mIoU (%) | Dice Mean (%) | Pixel Accuracy (%) | mPA / Sensitivity (%) | Specificity Macro (%) | Params (M) | GFLOPs (1080p) |
+|---|---|---|---|---|---|---|---|---|---|
+| **Seed 42** | 300 | 23.51% (at 512×512) | **20.70%** (at 512×1024) | 27.16% | 73.70% | 36.49% | 98.38% | 0.0270 | 1.02 |
 
-*Note on mIoU:* At $512 \times 512$ during training validation steps, best epoch mIoU reached 23.51%. At full test inference resolution ($512 \times 1024$), overall test mIoU across all 202,435,226 evaluated pixels is **20.70%** (Dice Mean **27.16%**, Pixel Accuracy **73.70%**).
+> **Note on mIoU discrepancy:** During training, the validation loop evaluates at the same 512 × 512 crop resolution used for training, yielding a best mIoU of 23.51%. The final test-time inference in `inference.py` evaluates at 512 × 1024 (wider aspect ratio), which introduces a resolution mismatch that lowers the score to 20.70%.
 
 ---
 
-## 2. Per-Class IoU Breakdown (%) - Seed 42
+## 2. Per-Class IoU Breakdown (%) — Seed 42
 
-| Class ID | Class Name | Seed 42 IoU (%) | Seed 42 Dice (%) | Category | Performance Assessment |
+| Class ID | Class Name | IoU (%) | Dice (%) | Category | Performance Assessment |
 |---|---|---|---|---|---|
 | 0 | road | **79.70%** | 88.70% | Flat / Surface | High (dominant ground plane) |
 | 1 | sidewalk | **40.75%** | 57.90% | Flat / Surface | Moderate |

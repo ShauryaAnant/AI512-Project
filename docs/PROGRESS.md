@@ -11,8 +11,8 @@
 | **Phase 6** | `train.py` and `inference.py` | ✅ | 2026-11-08 | `train.py`, `inference.py`, `src/engine.py`, `configs/baseline_acdc_night.yaml`, `tests/test_smoke_train.py` |
 | **Phase 7** | Baseline reproduction (ACDC Night) | ✅ | 2026-11-09 | Seed 42 run complete, `docs/baseline_results.md` |
 | **Phase 8** | Failure-case & efficiency analysis | ✅ | 2026-11-11 | `scripts/analyze_failures.py`, `docs/failure_analysis.md`, `docs/figures/confusion_matrix.png`, `docs/figures/worst_failures_gallery.png` |
-| **Phase 9** | Literature review & research gap | ⏳ Pending | | `docs/literature_review.md`, `docs/research_gap.md` |
-| **Phase 10** | Novel method design | ⏳ Pending | | `docs/method.md` |
-| **Phase 11** | Implementation of proposed method | ⏳ Pending | | `src/models/novel_*.py`, unit tests |
-| **Phase 12** | Experiments & ablations | ⏳ Pending | | `docs/ablations.md`, multi-seed results |
+| **Phase 9** | Literature review & research gap | ✅ | 2026-11-11 | `docs/literature_review.md`, `docs/research_gap.md` |
+| **Phase 10** | Novel method design | ✅ | 2026-11-22 | `docs/method.md` (BOLT-Loss: A + B + OHEM design, zero inference cost) |
+| **Phase 11** | Implementation of proposed method | ✅ | 2026-11-22 | `src/losses.py` (`BOLTLoss`), `configs/novel_bolt_acdc_night.yaml`, `tests/test_losses.py` (8/8 pass) |
+| **Phase 12** | Experiments & ablations | ⏳ In Progress | | Kaggle script ready (`kaggle/KAGGLE_NOVEL_GUIDE.md`), awaiting training run |
 | **Phase 13** | Report & submission package | ⏳ Pending | | `report/`, final codebase |

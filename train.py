@@ -22,7 +22,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 
 from src.datasets.acdc import build_dataloader
 from src.engine import evaluate, train_one_epoch
-from src.losses import CombinedLoss
+from src.losses import CombinedLoss, build_loss
 from src.models.model import build_model
 from src.utils.ckpt import load_checkpoint, save_checkpoint
 from src.utils.flops import compute_model_flops, count_parameters
@@ -87,13 +87,9 @@ def train(cfg: dict, resume: bool = False):
     param_info = count_parameters(model)
     logger.info(f"Model parameters: {param_info['params_total_M']:.4f}M ({param_info['params_total']:,})")
 
-    # Loss function
-    criterion = CombinedLoss(
-        num_classes=ds_cfg.get("num_classes", 19),
-        ignore_index=ds_cfg.get("ignore_index", 255),
-        ce_weight=train_cfg.get("ce_weight", 1.0),
-        dice_weight=train_cfg.get("dice_weight", 1.0),
-    ).to(device)
+    # Loss function (supports baseline CombinedLoss and novel BOLTLoss)
+    criterion = build_loss(cfg).to(device)
+    logger.info(f"Loss criterion: {criterion.__class__.__name__}")
 
     # Optimizer & Scheduler
     lr = train_cfg.get("lr", 0.01)
