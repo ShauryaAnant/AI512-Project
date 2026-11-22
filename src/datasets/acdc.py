@@ -200,6 +200,7 @@ class ACDCDataset(Dataset):
                 "stem": item["stem"],
                 "rgb_path": rgb_path,
                 "gt_path": gt_path,
+                "rcs_class": -1,
             }
             if mask_tensor is not None:
                 return img_tensor, mask_tensor, meta

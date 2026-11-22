@@ -125,9 +125,38 @@ def test_rcs_sampling():
     print("test_rcs_sampling passed!")
 
 
+def test_rcs_dataloader_mixed_batch():
+    """Verify DataLoader collation with mixed RCS (p=0.50) and normal crops."""
+    data_root = get_test_data_root()
+    if not Path(data_root).exists():
+        print(f"Skipping test_rcs_dataloader_mixed_batch: data root '{data_root}' not found.")
+        return
+
+    loader = build_dataloader(
+        split="train",
+        data_root=data_root,
+        splits_dir="splits",
+        batch_size=4,
+        num_workers=0,
+        crop_size=(256, 256),
+        rcs_enabled=True,
+        rcs_prob=0.5,
+        rcs_stats_file="data/processed/rcs_training_stats.json",
+    )
+    for _ in range(5):
+        batch = next(iter(loader))
+        imgs, masks, metas = batch
+        assert imgs.shape == (4, 3, 256, 256)
+        assert masks.shape == (4, 256, 256)
+        assert len(metas["stem"]) == 4
+        assert "rcs_class" in metas
+    print("test_rcs_dataloader_mixed_batch passed!")
+
+
 if __name__ == "__main__":
     test_dataset_item()
     test_eval_transforms()
     test_dataloader_batch()
     test_rcs_sampling()
+    test_rcs_dataloader_mixed_batch()
     print("All Phase 4 dataset and DataLoader tests passed successfully!")
