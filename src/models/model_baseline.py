@@ -2,7 +2,10 @@ import math
 import torch
 from torch import nn
 import torch.nn.functional as F
-from timm.models.layers import trunc_normal_
+try:
+    from torch.nn.init import trunc_normal_
+except ImportError:
+    from timm.models.layers import trunc_normal_
 
 class CustomMamba(nn.Module):
 

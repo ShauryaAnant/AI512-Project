@@ -1,6 +1,13 @@
 """Unit tests for segmentation losses (baseline CombinedLoss and novel BOLTLoss)."""
 
+import os
+import sys
+from pathlib import Path
 import unittest
+
+# Ensure repo root is always in Python search path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import torch
 import torch.nn as nn
 from src.losses import (
