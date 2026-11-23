@@ -23,9 +23,9 @@ class KnowledgeDistillationLoss(nn.Module):
     def __init__(
         self,
         base_criterion: nn.Module,
-        temperature: float = 4.0,
-        alpha: float = 0.5,
-        conf_threshold: float = 0.5,
+        temperature: float = 2.0,
+        alpha: float = 0.05,
+        conf_threshold: float = 0.6,
         use_confidence_masking: bool = True,
         ignore_index: int = 255,
     ) -> None:
@@ -33,9 +33,9 @@ class KnowledgeDistillationLoss(nn.Module):
 
         Args:
             base_criterion: Student task loss (e.g. CombinedLoss or SoftDice + CE).
-            temperature: Softmax smoothing temperature (default 4.0).
-            alpha: Balancing weight: (1 - alpha) * L_task + alpha * L_KD.
-            conf_threshold: Minimum teacher maximum class probability to apply KD.
+            temperature: Softmax smoothing temperature (default 2.0).
+            alpha: Balancing weight: (1 - alpha) * L_task + alpha * L_KD (default 0.05).
+            conf_threshold: Minimum teacher maximum class probability to apply KD (default 0.6).
             use_confidence_masking: Whether to filter out low-confidence teacher pixels.
             ignore_index: Ground truth ignore index (255).
         """
@@ -82,17 +82,13 @@ class KnowledgeDistillationLoss(nn.Module):
         T = self.temperature
 
         # Step 2: Soft probabilities with temperature
-        # Teacher soft probabilities: (B, C, H, W)
         p_teacher = F.softmax(teacher_logits / T, dim=1)
-        # Student log probabilities: (B, C, H, W)
         log_p_student = F.log_softmax(student_logits / T, dim=1)
 
         # Pixelwise KL-Divergence: sum_c p_T * (log p_T - log p_S)
-        # In PyTorch F.kl_div(input=log_p_student, target=p_teacher, log_target=False)
-        # computes p_teacher * (log(p_teacher) - log_p_student)
         kl_pixel = F.kl_div(log_p_student, p_teacher, reduction="none").sum(dim=1)  # (B, H, W)
 
-        # Step 3: Confidence Masking
+        # Step 3: High Confidence Masking
         valid_mask = (targets != self.ignore_index)  # (B, H, W)
 
         if self.use_confidence_masking:
@@ -105,9 +101,8 @@ class KnowledgeDistillationLoss(nn.Module):
 
         num_kd_pixels = kd_mask.float().sum()
         if num_kd_pixels > 0:
+            # Normalized unscaled KL loss (keeps loss around 0.5 - 1.5 instead of exploding to 16x)
             loss_kd = (kl_pixel * kd_mask.float()).sum() / num_kd_pixels
-            # Scale by T^2 as per standard distillation formulation (Hinton et al.)
-            loss_kd = loss_kd * (T ** 2)
         else:
             loss_kd = torch.tensor(0.0, device=student_logits.device, requires_grad=True)
 

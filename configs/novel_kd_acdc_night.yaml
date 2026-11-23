@@ -20,10 +20,11 @@ model:
 distillation:
   enabled: true
   teacher_name: "nvidia/segformer-b2-finetuned-cityscapes-1024-1024"
-  temperature: 4.0
-  alpha: 0.5
-  conf_threshold: 0.5
+  temperature: 2.0
+  alpha: 0.05
+  conf_threshold: 0.6
   use_confidence_masking: true
+  gamma_brighten: 0.6
 
 training:
   # Locked protocol hyperparameters

@@ -14,10 +14,11 @@ import torch.nn.functional as F
 class SegFormerTeacher(nn.Module):
     """Frozen SegFormer teacher producing 19-class logits at input resolution."""
 
-    def __init__(self, model_name: str, device: torch.device) -> None:
+    def __init__(self, model_name: str, device: torch.device, gamma_brighten: float = 0.6) -> None:
         super().__init__()
         self.model_name = model_name
         self.device = device
+        self.gamma_brighten = gamma_brighten
 
         try:
             from transformers import SegformerForSemanticSegmentation
@@ -46,8 +47,24 @@ class SegFormerTeacher(nn.Module):
         Returns:
             logits: (B, 19, H, W) bilinearly upsampled teacher logits.
         """
+        # If gamma brighten is set, brighten image for the daylight-trained teacher
+        if self.gamma_brighten > 0:
+            # Denormalize ImageNet
+            r = torch.clamp(images[:, 0:1] * 0.229 + 0.485, 0.0, 1.0)
+            g = torch.clamp(images[:, 1:2] * 0.224 + 0.456, 0.0, 1.0)
+            b = torch.clamp(images[:, 2:3] * 0.225 + 0.406, 0.0, 1.0)
+            rgb = torch.cat([r, g, b], dim=1)
+            # Apply gamma brightening (gamma = 0.6 lifts night shadows)
+            rgb_bright = torch.pow(rgb, self.gamma_brighten)
+            # Renormalize ImageNet for SegFormer
+            mean = torch.tensor([0.485, 0.456, 0.406], device=images.device).view(1, 3, 1, 1)
+            std = torch.tensor([0.229, 0.224, 0.225], device=images.device).view(1, 3, 1, 1)
+            teacher_input = (rgb_bright - mean) / std
+        else:
+            teacher_input = images
+
         # SegFormer outputs logits at 1/4 resolution (B, 19, H/4, W/4)
-        outputs = self.model(pixel_values=images)
+        outputs = self.model(pixel_values=teacher_input)
         logits = outputs.logits
 
         # Upsample to full input resolution
@@ -92,9 +109,10 @@ def build_teacher(cfg: Dict[str, Any], device: torch.device) -> Optional[nn.Modu
         return None
 
     teacher_name = kd_cfg.get("teacher_name", "nvidia/segformer-b2-finetuned-cityscapes-1024-1024")
+    gamma_brighten = kd_cfg.get("gamma_brighten", 0.6)
 
     # Offline/test mode support
     if teacher_name.lower() == "dummy":
         return DummyTeacher(num_classes=cfg.get("dataset", {}).get("num_classes", 19)).to(device)
 
-    return SegFormerTeacher(model_name=teacher_name, device=device)
+    return SegFormerTeacher(model_name=teacher_name, device=device, gamma_brighten=gamma_brighten)
