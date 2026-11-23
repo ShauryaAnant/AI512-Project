@@ -24,24 +24,29 @@ def train_one_epoch(
     clip_grad: Optional[float] = 1.0,
     scaler: Optional[torch.cuda.amp.GradScaler] = None,
     logger: Optional[logging.Logger] = None,
+    teacher_model: Optional[nn.Module] = None,
 ) -> Tuple[float, float]:
     """Train for a single epoch.
 
     Args:
         model: Model to train.
         dataloader: Training dataloader.
-        criterion: Combined loss function.
+        criterion: Loss function (standard CombinedLoss or KnowledgeDistillationLoss).
         optimizer: Optimizer.
         device: Torch device.
         epoch: Current epoch index.
         clip_grad: Max grad norm for clipping.
         scaler: Optional AMP GradScaler.
         logger: Optional logger.
+        teacher_model: Optional frozen teacher model for Knowledge Distillation.
 
     Returns:
         (average_epoch_loss, average_grad_norm)
     """
     model.train()
+    if teacher_model is not None:
+        teacher_model.eval()
+
     total_loss = 0.0
     total_grad_norm = 0.0
     num_batches = len(dataloader)
@@ -60,10 +65,19 @@ def train_one_epoch(
 
         optimizer.zero_grad()
 
+        # Compute teacher logits if Knowledge Distillation is active
+        teacher_logits = None
+        if teacher_model is not None:
+            with torch.no_grad():
+                teacher_logits = teacher_model(images)
+
         if scaler is not None and device.type == "cuda":
             with torch.cuda.amp.autocast():
                 logits = model(images)
-                loss = criterion(logits, targets)
+                if teacher_logits is not None:
+                    loss = criterion(logits, targets, teacher_logits)
+                else:
+                    loss = criterion(logits, targets)
 
             scaler.scale(loss).backward()
             if clip_grad is not None:
@@ -74,7 +88,11 @@ def train_one_epoch(
             scaler.update()
         else:
             logits = model(images)
-            loss = criterion(logits, targets)
+            if teacher_logits is not None:
+                loss = criterion(logits, targets, teacher_logits)
+            else:
+                loss = criterion(logits, targets)
+
             loss.backward()
             if clip_grad is not None:
                 grad_norm = nn.utils.clip_grad_norm_(model.parameters(), clip_grad)

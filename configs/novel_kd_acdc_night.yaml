@@ -1,0 +1,44 @@
+# Novelty 5: NightKD (Confidence-Aware Knowledge Distillation from SegFormer-B2)
+# Student: Lightweight Mamba/SSM U-Net (26,975 parameters, 1.02 GFLOPs)
+# Teacher: Pretrained SegFormer-B2 (nvidia/segformer-b2-finetuned-cityscapes-1024-1024)
+# Distillation: Temperature-scaled KL divergence + Teacher Confidence Masking (tau = 0.5)
+# Zero Test-Time Overhead: Teacher is completely removed at inference time (exactly 26,975 parameters)
+
+dataset:
+  data_root: "dataset"
+  splits_dir: "splits"
+  crop_size: [512, 512]
+  eval_size: [512, 1024]
+  num_classes: 19
+  ignore_index: 255
+
+model:
+  num_classes: 19
+  input_channels: 3
+  c_list: [8, 16, 24, 32, 48, 64]
+
+distillation:
+  enabled: true
+  teacher_name: "nvidia/segformer-b2-finetuned-cityscapes-1024-1024"
+  temperature: 4.0
+  alpha: 0.5
+  conf_threshold: 0.5
+  use_confidence_masking: true
+
+training:
+  # Locked protocol hyperparameters
+  epochs: 300
+  lr: 0.01
+  min_lr: 0.000001
+  weight_decay: 0.0001
+  batch_size: 4
+  num_workers: 2
+  seed: 42
+  clip_grad: 1.0
+  amp: false
+  out_dir: "runs/novel_kd_seed42"
+
+  # Base student loss
+  loss_type: "baseline"
+  ce_weight: 1.0
+  dice_weight: 1.0

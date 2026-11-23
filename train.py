@@ -99,6 +99,26 @@ def train(cfg: dict, resume: bool = False):
     criterion = build_loss(cfg).to(device)
     logger.info(f"Loss criterion: {criterion.__class__.__name__}")
 
+    # Knowledge Distillation setup (Optionally transfers knowledge from SegFormer teacher)
+    kd_cfg = cfg.get("distillation", {})
+    kd_enabled = kd_cfg.get("enabled", False)
+    teacher_model = None
+
+    if kd_enabled:
+        from src.distillation.teacher import build_teacher
+        from src.distillation.loss import KnowledgeDistillationLoss
+
+        teacher_model = build_teacher(cfg, device=device)
+        criterion = KnowledgeDistillationLoss(
+            base_criterion=criterion,
+            temperature=kd_cfg.get("temperature", 4.0),
+            alpha=kd_cfg.get("alpha", 0.5),
+            conf_threshold=kd_cfg.get("conf_threshold", 0.5),
+            use_confidence_masking=kd_cfg.get("use_confidence_masking", True),
+            ignore_index=ds_cfg.get("ignore_index", 255),
+        ).to(device)
+        logger.info(f"Distillation enabled: teacher={kd_cfg.get('teacher_name')}, alpha={kd_cfg.get('alpha', 0.5)}, T={kd_cfg.get('temperature', 4.0)}")
+
     # Optimizer & Scheduler
     lr = train_cfg.get("lr", 0.01)
     min_lr = train_cfg.get("min_lr", 1e-6)
@@ -150,6 +170,7 @@ def train(cfg: dict, resume: bool = False):
             epoch=epoch,
             clip_grad=train_cfg.get("clip_grad", 1.0),
             logger=logger,
+            teacher_model=teacher_model,
         )
         scheduler.step()
 
