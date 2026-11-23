@@ -12,7 +12,7 @@
 | **Phase 7** | Baseline reproduction (ACDC Night) | ✅ | 2026-11-09 | Seed 42 run complete, `docs/baseline_results.md` |
 | **Phase 8** | Failure-case & efficiency analysis | ✅ | 2026-11-11 | `scripts/analyze_failures.py`, `docs/failure_analysis.md`, `docs/figures/confusion_matrix.png`, `docs/figures/worst_failures_gallery.png` |
 | **Phase 9** | Literature review & research gap | ✅ | 2026-11-11 | `docs/literature_review.md`, `docs/research_gap.md` |
-| **Phase 10** | Novel method design | ✅ | 2026-11-22 | `docs/method.md` (BOLT-Loss: A + B + OHEM design, zero inference cost) |
-| **Phase 11** | Implementation of proposed method | ✅ | 2026-11-22 | `src/losses.py` (`BOLTLoss`), `configs/novel_bolt_acdc_night.yaml`, `tests/test_losses.py` (8/8 pass) |
-| **Phase 12** | Experiments & ablations | ⏳ In Progress | | Kaggle script ready (`kaggle/KAGGLE_NOVEL_GUIDE.md`), awaiting training run |
-| **Phase 13** | Report & submission package | ⏳ Pending | | `report/`, final codebase |
+| **Phase 10** | Novel method design | ✅ | 2026-11-22 | `docs/method.md` (BOLT-Loss & Frequency-Aware RCS design, zero inference cost) |
+| **Phase 11** | Implementation of proposed method | ✅ | 2026-11-22 | `src/losses.py`, `src/datasets/acdc.py` (RCS), `configs/novel_*.yaml`, unit tests verified |
+| **Phase 12** | Experiments & ablations | ✅ | 2026-11-23 | Baseline vs. BOLT vs. Boundary ($\lambda=0.2$) vs. RCS documented in `docs/novelty_results.md` |
+| **Phase 13** | Report & submission package | ⏳ In Progress | | Preparing final report and comparative figures |

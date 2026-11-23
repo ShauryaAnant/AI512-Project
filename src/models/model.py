@@ -416,8 +416,12 @@ def build_model(
     num_classes: int = 19,
     input_channels: int = 3,
     **kwargs: Any,
-) -> Model:
+) -> nn.Module:
     """Build and return semantic segmentation model instance.
+
+    Supports:
+    - Baseline: Mamba/SSM U-Net (26,975 parameters)
+    - Novelty: ModelIGSkip with Illumination-Gated Skip Modulation (28,137 parameters)
 
     Args:
         cfg: Optional configuration dictionary.
@@ -426,8 +430,9 @@ def build_model(
         **kwargs: Additional parameters passed to Model.
 
     Returns:
-        Instantiated Model.
+        Instantiated Model or ModelIGSkip.
     """
+    use_ig_skip = False
     if cfg is not None:
         model_cfg = cfg.get("model", {})
         num_classes = model_cfg.get("num_classes", num_classes)
@@ -435,6 +440,19 @@ def build_model(
         c_list = model_cfg.get("c_list", None)
         if c_list is not None:
             kwargs["c_list"] = c_list
+        use_ig_skip = (
+            model_cfg.get("architecture", "").lower() == "ig_skip"
+            or model_cfg.get("use_ig_skip", False) is True
+        )
+
+    if use_ig_skip:
+        from src.models.ig_skip import ModelIGSkip
+        return ModelIGSkip(
+            num_classes=num_classes,
+            input_channels=input_channels,
+            return_logits=True,
+            **kwargs,
+        )
 
     return Model(
         num_classes=num_classes,

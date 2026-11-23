@@ -65,7 +65,29 @@ def test_parameter_count():
     assert total_params < 1_000_000, f"Model has {total_params} parameters, expected < 1M"
 
 
+def test_ig_skip_model():
+    """Verify ModelIGSkip architecture, parameters, and gradient flow."""
+    model_cfg = {"model": {"use_ig_skip": True, "num_classes": 19, "input_channels": 3}}
+    model = build_model(cfg=model_cfg)
+    model.train()
+
+    total_params = sum(p.numel() for p in model.parameters())
+    print(f"IG-Skip parameters: {total_params:,} ({total_params / 1e6:.4f}M)")
+    # Expected exactly 28,137 (+1,162 over baseline)
+    assert total_params == 28_137, f"Expected 28,137 params, got {total_params}"
+
+    x = torch.randn(2, 3, 64, 64, requires_grad=True)
+    out = model(x)
+    assert out.shape == (2, 19, 64, 64)
+
+    loss = out.sum()
+    loss.backward()
+    assert x.grad is not None
+    print("test_ig_skip_model passed successfully!")
+
+
 if __name__ == "__main__":
     test_model_forward_and_backward()
     test_model_resolutions()
     test_parameter_count()
+    test_ig_skip_model()
