@@ -111,8 +111,14 @@ def train(cfg: dict, resume: bool = False):
     start_epoch = 0
     best_test_miou = 0.0
 
-    # Resume support
+    # Resume support (checks standard checkpoints/last.pth or top-level last_checkpoint.pt)
     last_ckpt_path = out_dir / "checkpoints" / "last.pth"
+    if not last_ckpt_path.exists():
+        if (out_dir / "last_checkpoint.pt").exists():
+            last_ckpt_path = out_dir / "last_checkpoint.pt"
+        elif Path("/kaggle/working/last_checkpoint.pt").exists():
+            last_ckpt_path = Path("/kaggle/working/last_checkpoint.pt")
+
     if resume and last_ckpt_path.exists():
         logger.info(f"Resuming from checkpoint: {last_ckpt_path}")
         ckpt = load_checkpoint(str(last_ckpt_path), model, optimizer, scheduler, device=device)

@@ -27,9 +27,30 @@ def save_checkpoint(
     last_path = ckpt_dir / filename
     torch.save(state, last_path)
 
+    # Save top-level convenience copies: last_checkpoint.pt
+    top_last = Path(out_dir) / "last_checkpoint.pt"
+    torch.save(state, top_last)
+
+    # If running on Kaggle, write directly to /kaggle/working/ for instant 1-click download
+    kaggle_dir = Path("/kaggle/working")
+    if kaggle_dir.exists():
+        try:
+            torch.save(state, kaggle_dir / "last_checkpoint.pt")
+        except Exception:
+            pass
+
     if is_best:
         best_path = ckpt_dir / "best.pth"
         torch.save(state, best_path)
+
+        top_best = Path(out_dir) / "best_checkpoint.pt"
+        torch.save(state, top_best)
+
+        if kaggle_dir.exists():
+            try:
+                torch.save(state, kaggle_dir / "best_checkpoint.pt")
+            except Exception:
+                pass
 
 
 def load_checkpoint(
