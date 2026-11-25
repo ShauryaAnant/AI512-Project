@@ -36,7 +36,7 @@ Rupnagar, Punjab, India \\
 \maketitle
 
 \begin{abstract}
-Real-time semantic segmentation under adverse nighttime driving conditions is an essential requirement for autonomous vehicles and mobile robots. However, it faces two main obstacles: extreme lighting variations (bright glare from headlights and pitch-black shadows) and severe class imbalance between large background surfaces and small objects. In this work, we study an ultra-lightweight Vision State-Space Model (Vision Mamba U-Net with only 26,975 parameters, $\approx$0.027M) on two challenging benchmarks: the large-scale NightCity dataset (4,297 images) and the ACDC Night dataset (506 images). Our inspection shows that standard additive skip connections allow high-frequency glare noise to pass directly from the encoder to the decoder, causing small and critical objects like traffic lights and signs to be swallowed by background buildings.
+Real-time semantic segmentation under adverse nighttime driving conditions is an essential requirement for autonomous vehicles and mobile robots. However, it faces two main obstacles: extreme lighting variations (bright glare from oncoming headlights and pitch-black shadows) and severe class imbalance between large background surfaces and small objects. In this work, we study an ultra-lightweight Vision State-Space Model (Vision Mamba U-Net with only 26,975 parameters, $\approx$0.027M) on two challenging benchmarks: the large-scale NightCity dataset (4,297 images) and the ACDC Night dataset (506 images). Our inspection shows that standard additive skip connections allow high-frequency glare noise to pass directly from the encoder to the decoder, causing small and critical objects like traffic lights and signs to be swallowed by background buildings.
 
 To address this issue, we propose \textbf{Illumination-Gated Skip Modulation (IG-Skip)}, a lightweight module that computes an illumination map from the input image to selectively scale skip features before fusion. On NightCity, combining IG-Skip with class-balanced weighting raises mIoU from 26.36\% to 31.17\% (+4.80\% absolute gain), recovering previously undetected categories such as traffic lights (+13.87\%) and bicycles (+14.50\%). The model adds only 306 parameters (+1.13\%) and runs at 66.74 FPS on an Nvidia Tesla T4 GPU. On the smaller ACDC Night dataset (400 training images), we conduct extensive experiments covering hard example mining, rare-class crop sampling, skip gating, and knowledge distillation from SegFormer-B2. These results reveal a clear capacity ceiling for sub-30k parameter models trained from scratch, providing practical insights for edge perception.
 \end{abstract}
@@ -46,98 +46,192 @@ Nighttime semantic segmentation, Vision Mamba, State-space models, Skip modulati
 \end{IEEEkeywords}
 
 \section{Introduction}
-Semantic scene segmentation under low-light and nighttime conditions is vital for safe autonomous driving and robotic navigation. While daytime segmentation models have achieved high accuracy using large convolutional and transformer networks~\cite{cordts2016cityscapes}, deploying these massive architectures on resource-constrained embedded automotive hardware remains difficult due to tight memory, power, and latency limits.
+Semantic scene parsing under low-light and adverse nighttime conditions is a core perceptual task for self-driving cars, advanced driver assistance systems (ADAS), and mobile robotics. While daytime semantic segmentation has seen remarkable progress using massive vision transformer and deep convolutional backbones~\cite{cordts2016cityscapes}, deploying such architectures on real-world edge devices remains extremely challenging. Embedded automotive microcontrollers and robotics platforms operate under strict hardware budgets, requiring low power consumption, minimal memory footprint, and high-frequency real-time inference ($>30$ frames per second).
 
-Recently, Vision State Space Models (Vision Mamba / SSMs)~\cite{gu2023mamba,ruan2024vmunet} have emerged as efficient alternatives to self-attention transformers. By scanning 2D feature maps in linear time, Vision Mamba captures global context with very few parameters ($<30\text{k}$). However, when deployed in adverse nighttime environments, compact SSMs face severe difficulties. Nighttime driving images display extreme contrast: intense localized glare from oncoming headlights and streetlamps ($I \approx 255$) sits right next to underexposed dark shadows ($I \approx 0$). In a standard U-Net, encoder features are directly added to decoder features:
-\begin{equation}
-\mathbf{D}_k = \text{Decoder}_k(\mathbf{D}_{k+1}) + \mathbf{T}_k
-\end{equation}
-In dark scenes, skip features $\mathbf{T}_k$ carry high-frequency glare artifacts and sensor noise. This noise passes straight into the decoder, overwhelming the representation of small, thin, and safety-critical classes (such as traffic lights, signs, poles, and distant pedestrians), causing them to be misclassified as dominant background classes like buildings or roads.
+Recently, Vision State Space Models (Vision Mamba / SSMs)~\cite{gu2023mamba,ruan2024vmunet} have emerged as promising alternatives to self-attention networks. By processing 2D visual tokens through selective scan mechanisms, State Space Models achieve global receptive fields with linear computational complexity $\mathcal{O}(HW)$ rather than quadratic complexity $\mathcal{O}((HW)^2)$. This allows models to scale down to ultra-compact parameter footprints under 30,000 parameters.
 
-To tackle this challenge, this project investigates lightweight nighttime scene parsing across two complementary tracks:
+However, when compact SSM architectures are applied to nighttime road scenes, they encounter severe degradation:
 \begin{enumerate}
-    \item \textbf{NightCity Benchmark Track (Kanav Puri):} Evaluated on 4,297 high-resolution nighttime street images, introducing Illumination-Gated Skip Modulation (IG-Skip) and class-balanced loss to suppress glare and restore small-object detection at 66.74 FPS.
-    \item \textbf{ACDC Night Benchmark Track (Shaurya Anant):} Evaluated on the adverse ACDC Night dataset, conducting systematic experiments with hard example mining, rare-class crop sampling, skip gating, and knowledge distillation from SegFormer-B2.
+    \item \textbf{Extreme Photometric Dynamic Range:} Nighttime urban driving exhibits extreme local contrast. Over-exposed regions caused by oncoming headlights, xenon streetlamps, and storefront signs ($I \approx 255$) exist immediately alongside pitch-black road shoulders and shadow voids ($I \approx 0$).
+    \item \textbf{Skip Connection Glare Leakage:} In standard U-Net architectures, raw encoder features are transferred directly to decoder stages through additive skips:
+    \begin{equation}
+    \mathbf{D}_k = \text{Decoder}_k(\mathbf{D}_{k+1}) + \mathbf{T}_k
+    \end{equation}
+    Because early encoder stages act primarily as edge and texture extractors, they blindly amplify sensor noise, optical bloom, and specular reflections from wet asphalt. Adding these corrupted features directly into the decoder destroys subtle semantic boundaries, causing small objects (such as traffic lights, signs, and distant pedestrians) to be misclassified as dominant background classes like buildings.
+    \item \textbf{Extreme Class Imbalance under Low Sample Regimes:} Dominant background classes (road, building, sky) occupy over 75\% of all image pixels. When compact models are trained from scratch on limited nighttime data, optimization gradients are dominated by background surfaces, leaving smaller safety-critical classes with near-zero recall.
 \end{enumerate}
+
+To systematically investigate and mitigate these challenges, Group No.~01 pursued a coordinated two-track collaborative investigation:
+\begin{itemize}
+    \item \textbf{Track 1 (Kanav Puri) --- NightCity Benchmark:} Evaluates large-scale nighttime driving on 4,297 images. Formulates the \textbf{Illumination-Gated Skip Modulation (IG-Skip)} architecture and class-balanced optimization, achieving a +4.80\% mIoU gain and resurrecting multiple zero-recall classes at 66.74 FPS.
+    \item \textbf{Track 2 (Shaurya Anant) --- ACDC Night Benchmark:} Evaluates adverse nighttime conditions with extreme data scarcity (400 training images). Conducts multi-axis experiments spanning online hard example mining (OHEM), frequency-aware rare-class crop sampling (RCS), skip modulation, and confidence-gated knowledge distillation (NightKD) from SegFormer-B2.
+\end{itemize}
 
 \section{Related Work}
 
 \subsection{Nighttime Semantic Segmentation}
-Early methods for nighttime segmentation relied on unsupervised domain adaptation (UDA) to transfer daytime features to night domains. Methods such as CycleGAN and DANNet~\cite{wu2021dannet} synthesized twilight intermediate images. However, synthetic image translation often introduces unrealistic artifacts and requires heavy multi-stage training. Supervised training on real nighttime datasets (e.g., NightCity~\cite{tan2021nightcity} and ACDC~\cite{sakaridis2021acdc}) has therefore become the preferred standard, highlighting the fragility of standard architectures under strong glare and low light.
+Early approaches to nighttime scene understanding predominantly relied on unsupervised domain adaptation (UDA) to bridge the domain shift from well-lit daytime datasets to nighttime targets. Frameworks such as CycleGAN, AdaptSegNet, and DANNet~\cite{wu2021dannet} relied on adversarial training and day-to-night image translation to align intermediate distributions. However, generative day-to-night synthesis often introduces artificial artifacts, hallucinates daytime textures onto unlit regions, and demands complex multi-stage training pipelines.
 
-\subsection{Vision State Space Models}
-Selective Structured State Space Models (Mamba~\cite{gu2023mamba}) model long sequences in linear time $\mathcal{O}(N)$. VM-UNet~\cite{ruan2024vmunet} adapted Mamba to 2D vision tasks by flattening images into bidirectional scans. While Vision Mamba works well on daylight and medical benchmarks, its performance under extreme lighting with sub-30k parameter budgets has received little study.
+With the release of dedicated nighttime driving benchmarks like NightCity~\cite{tan2021nightcity} and the Adverse Conditions Dataset with Correspondences (ACDC)~\cite{sakaridis2021acdc}, direct supervised training on authentic low-light scenes has become feasible. These benchmarks have highlighted the specific failure modes of standard architectures under genuine glare, darkness, and sensor noise, demonstrating that algorithms designed for daytime imagery struggle under nighttime lighting conditions.
 
-\subsection{Skip Modulation and Distillation}
-Standard U-Nets use direct addition or concatenation for skip connections, assuming encoder features are universally clean. Attention U-Nets and Squeeze-and-Excitation networks introduced channel gating, but do not use physical lighting priors. Knowledge Distillation (KD)~\cite{hinton2015distilling} transfers class knowledge from large teacher models to compact students, providing an effective way to guide small edge networks.
+\subsection{State Space Models and Vision Mamba}
+Structured State Space Sequence Models (S4 and Mamba)~\cite{gu2023mamba} were originally developed for long-sequence natural language processing, mapping continuous 1D inputs to hidden state representations in linear time. VM-UNet~\cite{ruan2024vmunet} adapted this mechanism to 2D vision tasks by flattening image feature grids into bidirectional horizontal and vertical scan sequences. While Vision Mamba has shown strong performance in medical imaging and daytime classification, its behavior when constrained to ultra-compact sizes ($<0.03\text{M}$ parameters) and trained from scratch on nighttime road scenes has remained largely unstudied.
+
+\subsection{Skip Connection Gating and Distillation}
+Standard U-Net skip connections rely on plain element-wise addition or concatenation, under the assumption that encoder features provide pure, uncorrupted spatial details. Attention U-Net and Squeeze-and-Excitation networks introduced data-driven channel and spatial gating mechanisms, but these rely solely on intermediate features without accounting for physical lighting.
+
+In parallel, Knowledge Distillation (KD)~\cite{hinton2015distilling} transfers rich semantic representations from large teacher models into compact student networks. When transferring knowledge from daytime-pretrained teachers to nighttime students, directly matching raw logits can transfer daytime bias. Designing domain-aware distillation strategies that account for low illumination is therefore critical.
+
+\section{Baseline Architecture and Drawbacks}
+
+\subsection{Detailed Baseline Model Specification}
+To evaluate the absolute lower bound of model footprint for real-time edge segmentation, our baseline model is designed with an ultra-compact parameter budget of exactly \textbf{26,975 parameters (0.0270M)}. The architecture follows a 6-stage encoder and 5-stage decoder U-Net topology.
+
+The channel capacity is strictly scaled down across stages:
+\begin{equation}
+C = [C_1, C_2, C_3, C_4, C_5, C_6] = [8, 16, 24, 32, 48, 64]
+\end{equation}
+The structural configuration of each stage is defined as follows:
+\begin{itemize}
+    \item \textbf{Stage 1 ($H \times W, C_1=8$):} Processes full-resolution input images using a $3 \times 3$ depthwise-separable convolution, Group Normalization ($G=4$ groups), and GELU activation.
+    \item \textbf{Stage 2 ($H/2 \times W/2, C_2=16$):} Strided convolution for spatial downsampling, followed by lightweight $3 \times 3$ depthwise convolution and Group Normalization.
+    \item \textbf{Stage 3 ($H/4 \times W/4, C_3=24$):} Further downsamples spatial resolution while maintaining local texture extraction.
+    \item \textbf{Stage 4 ($H/8 \times W/8, C_4=32$):} Transitions from pure convolutions to Mamba Cross-Highway Layers (MCHLayer), unrolling 2D feature grids into directional sequences.
+    \item \textbf{Stage 5 ($H/16 \times W/16, C_5=48$):} MCHLayer with expanded receptive field capturing cross-scene semantics.
+    \item \textbf{Stage 6 ($H/32 \times W/32, C_6=64$):} Bottleneck MCHLayer modeling global contextual dependencies across the deepest latent representation.
+    \item \textbf{Decoder Stages (5 to 1):} Symmetrically upsamples feature maps via bilinear interpolation, applies a $1 \times 1$ projection to match stage channels, and performs element-wise addition with encoder skip connections.
+\end{itemize}
+
+\subsection{Theoretical Mechanics of 2D State-Space Scans}
+In each MCHLayer, continuous 1D state-space dynamics are applied to flattened 2D visual tokens:
+\begin{align}
+h'(t) &= \mathbf{A} h(t) + \mathbf{B} x(t) \\
+y(t) &= \mathbf{C} h(t)
+\end{align}
+Using zero-order hold discretization with timescale parameter $\Delta$, the continuous system transforms into discrete recurrence parameters:
+\begin{align}
+\mathbf{\bar{A}} &= \exp(\Delta \mathbf{A}) \\
+\mathbf{\bar{B}} &= (\Delta \mathbf{A})^{-1} (\mathbf{\bar{A}} - \mathbf{I}) \Delta \mathbf{B}
+\end{align}
+Unlike 1D language sequences, 2D images have no inherent temporal order. VM-UNet addresses this by scanning feature grids along four directions: horizontal forward, horizontal backward, vertical forward, and vertical backward. This provides every token with global receptive field coverage in linear $\mathcal{O}(HW)$ computational complexity.
+
+\subsection{Key Drawbacks of the Baseline in Low Light}
+While computationally efficient, our empirical audits revealed four critical failure modes when the baseline model is exposed to nighttime conditions:
+
+\subsubsection{Drawback 1: Unfiltered Glare Bleed via Additive Skips}
+In a standard additive skip connection, early features $\mathbf{T}_k$ pass straight into the decoder:
+\begin{equation}
+\mathbf{D}_k = \text{Decoder}_k(\mathbf{D}_{k+1}) + \mathbf{T}_k
+\end{equation}
+Under nighttime illumination, early convolutional filters respond strongly to high-frequency artifacts: headlight bloom, sharp reflections on wet asphalt, and specular flare. Because the skip connection has no attenuation mechanism, these noisy activations bleed directly into the decoder. This corrupts fine-grained semantic features, causing small objects (such as traffic lights and signs) to be completely misclassified as background building surfaces.
+
+\subsubsection{Drawback 2: Scratch Training on Limited Data}
+Large segmentation models typically benefit from pretraining on massive datasets like ImageNet or Cityscapes. Training an ultra-compact 27k-parameter SSM strictly from scratch on small nighttime datasets (such as ACDC with only 400 training images) poses severe optimization challenges. Without pretrained feature extractors, the tiny network must simultaneously learn low-level visual filters, illumination invariance, and high-level class boundaries from a very small number of gradient updates.
+
+\subsubsection{Drawback 3: Directional Scanning Vulnerability in Darkness}
+In well-lit daytime images, object boundaries exhibit clear photometric gradients in all directions. In dark nighttime scenes, large regions contain near-zero intensity ($I \approx 0$) interrupted by sudden localized glare spikes. When Mamba unrolls 2D features into 1D sequences, long stretches of zero activations followed by abrupt spikes destabilize the state recurrence $h(t)$, making it difficult for the network to trace thin structural boundaries like fences and poles.
+
+\subsubsection{Drawback 4: Gradient Dominance by Background Surfaces}
+Because road, building, and sky pixels constitute over 75\% of all labeled data, standard cross-entropy loss gradients are heavily dominated by these large background categories. The 27k-parameter network quickly expends its limited representational capacity memorizing easy background surfaces, resulting in zero recall on small or rare categories like bicycles, traffic lights, and riders.
 
 \section{Proposed Methodology}
 
-\subsection{Lightweight Vision Mamba U-Net Backbone}
-Our baseline network uses a 6-stage encoder and a 5-stage decoder connected by lateral skip connections. The channel widths across stages are set to $C = [8, 16, 24, 32, 48, 64]$, resulting in an ultra-compact model of \textbf{26,975 parameters (0.0270M)} and 1.02 GFLOPs at $512 \times 1024$. Stages 1--3 use lightweight $3 \times 3$ convolutions with Group Normalization ($G=4$) and GELU activations. Stages 4--6 employ Mamba Cross-Highway Layers (MCHLayer), which scan feature maps across horizontal and vertical directions to capture global context without quadratic memory cost.
-
 \subsection{Illumination-Gated Skip Modulation (IG-Skip)}
-To prevent glare halos and shadow noise from corrupting decoder features, we introduce \textbf{Illumination-Gated Skip Modulation (IG-Skip)}. Instead of treating all skip features equally, IG-Skip computes an illumination map directly from the normalized input RGB image $X \in \mathbb{R}^{B \times 3 \times H \times W}$:
-\begin{equation}
-L(X) = 0.299\,R + 0.587\,G + 0.114\,B \in [0, 1]
-\end{equation}
-For each decoder stage $k \in \{1, \dots, 5\}$, the luminance map $L(X)$ is bilinearly downsampled to the stage resolution $(H_k, W_k)$. 
+To eliminate glare contamination while preserving structural edge information, we propose \textbf{Illumination-Gated Skip Modulation (IG-Skip)}. Rather than assuming encoder skip features are equally valid across all spatial locations, IG-Skip dynamically computes a spatial-channel attenuation gate based on an illumination prior extracted directly from the normalized input image $X \in \mathbb{R}^{B \times 3 \times H \times W}$.
 
 \begin{figure}[t]
 \centering
 \fbox{\parbox{0.92\columnwidth}{\centering
 \small
-\textbf{Input Image} $X \in \mathbb{R}^{B \times 3 \times H \times W}$ \\
+\textbf{Input RGB Image} $X \in \mathbb{R}^{B \times 3 \times H \times W}$ \\
 $\Downarrow$ \\
-\textbf{Luminance Map:} $L(X) = 0.299R + 0.587G + 0.114B$ \\
-$\Downarrow$ \scriptsize (Bilinear Downsampling to Stage Resolution) \small \\
-\textbf{Spatial-Channel Gate:} $G_k = 2.0 \cdot \sigma\left(\mathbf{W}_{\text{proj}}^{(k)} * (\mathbf{W}_{\text{spatial}} * L_k)\right)$ \\
+\textbf{Photometric Luminance Map:} \\
+$L(X) = 0.299\,R + 0.587\,G + 0.114\,B \in [0, 1]$ \\
+$\Downarrow$ \scriptsize (Bilinear Downsampling to Stage Resolution $H_k \times W_k$) \small \\
+\textbf{Separable Spatial-Channel Gating:} \\
+$G_k = 2.0 \cdot \sigma\left(\mathbf{W}_{\text{proj}}^{(k)} * (\mathbf{W}_{\text{spatial}} * L_k)\right)$ \\
 $\Downarrow$ \\
-\textbf{Modulated Skip Fusion:} $\mathbf{D}_k = \text{Decoder}_k(\mathbf{D}_{k+1}) + (\mathbf{T}_k \odot G_k)$
+\textbf{Modulated Skip Fusion:} \\
+$\mathbf{D}_k = \text{Decoder}_k(\mathbf{D}_{k+1}) + \left(\mathbf{T}_k \odot G_k\right)$
 }}
-\caption{Dataflow of Illumination-Gated Skip Modulation (IG-Skip).}
+\caption{Dataflow diagram of Illumination-Gated Skip Modulation (IG-Skip).}
 \label{fig:ig_skip_arch}
 \end{figure}
 
-The spatial-channel gating tensor $G_k$ is computed using a lightweight separable convolution:
+The photometric luminance map is derived using standard CIE luminance coefficients:
 \begin{equation}
-G_k = 2.0 \cdot \sigma\left(\mathbf{W}_{\text{proj}}^{(k)} * \left(\mathbf{W}_{\text{spatial}} * L_k\right)\right)
+L(X) = 0.299\,R + 0.587\,G + 0.114\,B \in [0, 1]
 \end{equation}
-where $\mathbf{W}_{\text{spatial}}$ is a shared $3 \times 3$ depthwise convolution that extracts local lighting gradients, and $\mathbf{W}_{\text{proj}}^{(k)}$ is a $1 \times 1$ pointwise projection that matches channel dimension $C_k$.
+For each decoder junction $k \in \{1, \dots, 5\}$, the full-resolution luminance map $L(X)$ is bilinearly downsampled to match the spatial resolution $(H_k, W_k)$ of stage $k$, producing $L_k$.
 
-\subsubsection{Identity Initialization}
-To ensure training stability from scratch, $\mathbf{W}_{\text{spatial}}$ is initialized as an identity kernel, and $\mathbf{W}_{\text{proj}}^{(k)}$ weights and biases are initialized to zero. Since $2.0 \cdot \sigma(0) = 1.0$, the gating tensor starts at $G_k \equiv \mathbf{1}$ at epoch 0. The skip connections initially behave exactly like standard addition and gradually learn to attenuate glare and noise as training proceeds.
+The spatial-channel gating tensor $G_k$ is computed using a lightweight separable convolution structure:
+\begin{equation}
+G_k = 2.0 \cdot \sigma\left(\mathbf{W}_{\text{proj}}^{(k)} * \left(\mathbf{W}_{\text{spatial}} * L_k\right)\right) \in (0, 2)^{B \times C_k \times H_k \times W_k}
+\end{equation}
+where $\mathbf{W}_{\text{spatial}}$ is a shared $3 \times 3$ depthwise convolution across all stages that extracts local lighting gradients, and $\mathbf{W}_{\text{proj}}^{(k)}$ is a stage-specific $1 \times 1$ pointwise convolution projecting the scalar lighting response into channel dimension $C_k$. The sigmoid function $\sigma(\cdot)$ is scaled by $2.0$ to allow skip features to be either attenuated ($G_k < 1.0$) or reinforced ($G_k > 1.0$) depending on local scene illumination.
+
+\subsubsection{Identity Initialization for Stable Scratch Training}
+Because ultra-compact networks trained from scratch have limited capacity to recover from early gradient instability, random initialization of gating weights can cause severe gradient divergence. To prevent this, we initialize $\mathbf{W}_{\text{spatial}}$ as an identity kernel and initialize the projection weights $\mathbf{W}_{\text{proj}}^{(k)}$ and biases strictly to zero. 
+
+Because $2.0 \cdot \sigma(0) = 1.0$, the gating tensor evaluates to:
+\begin{equation}
+G_k^{(t=0)} \equiv \mathbf{1}
+\end{equation}
+At the start of training, the model behaves exactly like the baseline additive U-Net. As optimization progresses, the network smoothly adjusts the gating weights, learning to suppress glare halos and amplify shadow edges without destabilizing training.
 
 \subsection{Class-Balanced Optimization}
 Urban driving datasets suffer from severe class imbalance: road, building, sky, and vegetation account for over 75\% of all labeled pixels. We use a smoothed inverse frequency weighting:
 \begin{equation}
 w_c = \left(\frac{N_{\text{median}}}{N_c}\right)^{0.25}, \quad \tilde{w}_c = \text{clamp}\left(\frac{w_c}{\bar{w}}, 0.40, 3.50\right)
 \end{equation}
+where $N_c$ is the total pixel count of class $c$ in the training set, $N_{\text{median}}$ is the median pixel frequency across all classes, and $\bar{w}$ normalizes the weights. Clamping between $0.40$ and $3.50$ prevents rare-class weights from causing gradient spikes.
+
 The composite training loss combines class-weighted cross-entropy with multi-class Soft Dice loss:
 \begin{equation}
 \mathcal{L}_{\text{total}} = \mathcal{L}_{\text{wCE}}(\mathbf{Z}, \mathbf{Y}; \tilde{w}) + \mathcal{L}_{\text{SoftDice}}(\mathbf{Z}, \mathbf{Y})
 \end{equation}
+where the Soft Dice loss is defined as:
+\begin{equation}
+\mathcal{L}_{\text{SoftDice}} = 1 - \frac{1}{C} \sum_{c=1}^C \frac{2 \sum_{i} P_{i,c} Y_{i,c} + \epsilon}{\sum_i P_{i,c}^2 + \sum_i Y_{i,c}^2 + \epsilon}
+\end{equation}
 
 \section{Experimental Setup}
 
-\subsection{Datasets}
-We evaluate our methods on two distinct benchmarks:
+\subsection{Datasets and Evaluation Protocols}
+Our study evaluates two representative nighttime driving benchmarks:
 \begin{enumerate}
-    \item \textbf{NightCity Benchmark (Track 1):} Contains 4,297 nighttime street images (2,998 training and 1,299 validation pairs) at $1024 \times 512$ resolution with 19 semantic classes.
-    \item \textbf{ACDC Night Benchmark (Track 2):} Contains 506 adverse nighttime driving images (400 training and 106 test images) at $1920 \times 1080$ resolution under extreme darkness, wet roads, and rural lighting.
+    \item \textbf{NightCity Benchmark (Track 1):} Contains 4,297 real-world nighttime street images partitioned into 2,998 training and 1,299 validation pairs at $1024 \times 512$ resolution across 19 Cityscapes-compatible semantic classes.
+    \item \textbf{ACDC Night Benchmark (Track 2):} Contains 506 adverse nighttime driving scenes captured under extreme dark, wet, and rural road conditions, partitioned into 400 training and 106 test images at full $1920 \times 1080$ resolution.
 \end{enumerate}
 
-\subsection{Training Setup}
-All models were trained from scratch for 300 epochs on Nvidia Tesla T4 GPUs (15 GB VRAM) using PyTorch:
+\subsection{Implementation and Training Details}
+All models were trained strictly from scratch without any external pretraining on dedicated Nvidia Tesla T4 GPUs (15 GB VRAM) using PyTorch 2.x and CUDA 12.x:
 \begin{itemize}
-    \item \textbf{NightCity Setup:} SGD optimizer with momentum 0.9, weight decay $10^{-4}$, constant learning rate $\eta = 0.01$, batch size 1 at $512 \times 1024$.
-    \item \textbf{ACDC Night Setup:} AdamW optimizer, initial learning rate $\eta = 0.01$ with Cosine Annealing ($\eta_{\text{min}} = 10^{-6}$), weight decay $10^{-4}$, batch size 4 on $512 \times 512$ crops, evaluated at $512 \times 1024$ and upsampled to full $1080 \times 1920$.
+    \item \textbf{NightCity Protocol:} SGD optimizer with momentum 0.9, weight decay $10^{-4}$, constant learning rate $\eta = 0.01$, batch size 1 at $512 \times 1024$ resolution for 300 epochs.
+    \item \textbf{ACDC Night Protocol:} AdamW optimizer, initial learning rate $\eta = 0.01$ with Cosine Annealing ($\eta_{\text{min}} = 10^{-6}$), weight decay $10^{-4}$, batch size 4 on random $512 \times 512$ crops, evaluated at $512 \times 1024$ and bilinearly upsampled to full $1080 \times 1920$ resolution for 300 epochs.
 \end{itemize}
 
-\section{Results and Discussion}
+\begin{figure*}[t]
+\centering
+\begin{minipage}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{nightcity_comparison.png}
+    \caption{Qualitative segmentation comparison on the NightCity validation split (sample \texttt{Dubai\_0064}). While the baseline misclassifies bright building glare and misses smaller foreground objects, our IG-Skip model accurately delineates road, sidewalk boundaries, and vehicles.}
+    \label{fig:nightcity_qual}
+\end{minipage}
+\hfill
+\begin{minipage}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{acdc_comparison.png}
+    \caption{Qualitative segmentation comparison on the adverse ACDC Night benchmark (sample \texttt{GOPR0356\_frame\_000378}). Under intense headlight glare and dark surroundings, the baseline shows noisy boundaries. The experimental model preserves coherent road surfaces and distinguishes vehicles from background noise.}
+    \label{fig:acdc_qual}
+\end{minipage}
+\end{figure*}
+
+\section{Results and Empirical Analysis}
 
 \subsection{Track 1: NightCity Benchmark Results (Kanav Puri)}
-Table~\ref{tab:nightcity_overall} summarizes the overall performance and computational complexity on the NightCity validation set. 
+Table~\ref{tab:nightcity_overall} presents the overall performance and computational complexity metrics on the 1,299-image NightCity validation set.
 
 \begin{table}[t]
 \caption{Overall Performance and Complexity on NightCity Validation Split (300 Epochs, Tesla T4 GPU).}
@@ -164,11 +258,11 @@ Throughput & 53.26 FPS & \textbf{66.74 FPS} & +13.48 & Real-Time \\
 }
 \end{table}
 
-The IG-Skip architecture provides three clear benefits:
+The proposed IG-Skip architecture achieves significant improvements across key evaluation metrics:
 \begin{itemize}
-    \item \textbf{Substantial mIoU Gain:} mIoU improves from 26.36\% to \textbf{31.17\%} (+4.80\% absolute, +18.2\% relative gain).
-    \item \textbf{Recovery of Missed Classes:} As shown in Table~\ref{tab:nightcity_per_class}, the baseline completely failed on small or slender objects due to glare bleed. IG-Skip successfully recovers \textbf{traffic light (0.00\% $\rightarrow$ 13.87\%)} and \textbf{bicycle (0.00\% $\rightarrow$ 14.50\%)}, alongside large gains in \textbf{truck (4.80\% $\rightarrow$ 25.78\%)} and \textbf{bus (2.76\% $\rightarrow$ 13.38\%)}.
-    \item \textbf{High Efficiency:} IG-Skip adds only \textbf{306 parameters (+1.13\%)} and operates at \textbf{66.74 FPS} (14.98 ms latency), easily meeting real-time requirements.
+    \item \textbf{Significant mIoU Improvement:} Mean IoU rises from 26.36\% to \textbf{31.17\%}, representing an absolute gain of \textbf{+4.80\%} (+18.2\% relative improvement).
+    \item \textbf{Resurrection of Missed Classes:} As detailed in the full 19-class breakdown in Table~\ref{tab:nightcity_per_class}, the baseline model suffered from complete detection collapse on several thin and distant classes due to glare bleed. IG-Skip successfully revives \textbf{traffic light (0.00\% $\rightarrow$ 13.87\%)} and \textbf{bicycle (0.00\% $\rightarrow$ 14.50\%)}, while yielding substantial gains on \textbf{truck (4.80\% $\rightarrow$ 25.78\%)} and \textbf{bus (2.76\% $\rightarrow$ 13.38\%)}.
+    \item \textbf{Minimal Parameter Overhead:} The entire IG-Skip mechanism introduces only \textbf{306 parameters (+1.13\%)} and increases MACs by only \textbf{+0.70\%}. Inference speed increases to \textbf{66.74 FPS} (14.98 ms latency), well exceeding real-time requirements.
 \end{itemize}
 
 \begin{table}[t]
@@ -218,24 +312,17 @@ Terrain & 2.0\% & \textbf{15.4\%} & 6.3\% & \textbf{5.4\%} (-0.9\%) \\
 }
 \end{table}
 
-Table~\ref{tab:nightcity_confusion} illustrates the reason behind this improvement: by suppressing glare, misclassifications of foreground objects as background buildings decrease by \textbf{10.8\% to 12.4\%}. Figure~\ref{fig:nightcity_qual} shows qualitative segmentation results on a NightCity test image.
+\subsubsection{Per-Class Failure Analysis and Confusion Patterns}
+Table~\ref{tab:nightcity_confusion} highlights the underlying mechanism responsible for this recovery. In the baseline model, 77.2\% of traffic light pixels and 60.7\% of traffic sign pixels were erroneously classified as background building due to glare bleeding through skip paths. Because traffic lights and signs often appear against building facades and emit intense localized light, unmodulated encoder filters fail to distinguish the sign border from the surrounding architectural illumination. With IG-Skip, misclassifications of foreground objects into building facades drop by \textbf{10.8\% to 12.4\%}.
 
-\begin{figure*}[t]
-\centering
-\includegraphics[width=0.96\textwidth]{nightcity_comparison.png}
-\caption{Qualitative segmentation comparison on the NightCity validation split (sample \texttt{Dubai\_0064}). While the baseline misclassifies bright building glare and misses smaller foreground objects, our IG-Skip model accurately delineates road, sidewalk boundaries, and vehicles.}
-\label{fig:nightcity_qual}
-\end{figure*}
-
-\begin{figure*}[t]
-\centering
-\includegraphics[width=0.96\textwidth]{acdc_comparison.png}
-\caption{Qualitative segmentation comparison on the adverse ACDC Night benchmark (sample \texttt{GOPR0356\_frame\_000378}). Under intense headlight glare and dark surroundings, the baseline shows noisy boundaries. The experimental model preserves coherent road surfaces and distinguishes vehicles from background noise.}
-\label{fig:acdc_qual}
-\end{figure*}
+Examining the remaining low-performing classes provides further insight:
+\begin{itemize}
+    \item \textbf{Truck and Bus Revival:} Trucks and buses frequently exhibit bright specular reflections on windshields and metallic panels. In the baseline, these reflections fragmented large vehicles into disjointed patches. IG-Skip smoothed out lighting transitions, boosting Truck IoU by \textbf{+21.0\%} and Bus IoU by \textbf{+10.6\%}.
+    \item \textbf{Zero-IoU Edge Cases (Rider, Train, Motorcycle):} In the NightCity validation split, the Train category contains zero true positive instances, explaining its 0.00\% IoU. The Motorcycle class has fewer than 15 total instances across 1,299 images, making evaluation statistics statistically sparse. Furthermore, visual inspection identified an annotation anomaly in sample \texttt{Dubai\_0013}, where reflective hood surfaces were labeled as rider, penalizing predictions.
+\end{itemize}
 
 \subsection{Track 2: ACDC Night Experimental Suite (Shaurya Anant)}
-On the ACDC Night benchmark, training data is limited to only 400 images without pretraining. Under this strict data constraint, we conducted four distinct experimental investigations, as summarized in Table~\ref{tab:acdc_master}.
+On the ACDC Night benchmark, training data is strictly limited to 400 images without pretraining. Under this data constraint, we conducted four distinct experimental investigations, as summarized in Table~\ref{tab:acdc_master}.
 
 \begin{table*}[t]
 \caption{Comprehensive Multi-Axis Experimental Investigation on the ACDC Night Benchmark (300 Epochs, Seed 42).}
@@ -258,42 +345,50 @@ On the ACDC Night benchmark, training data is limited to only 400 images without
 \end{table*}
 
 \subsubsection{Experiment 1: Online Hard Example Mining}
-We tested whether forcing the network to update solely on the 50\% hardest loss pixels ($\text{OHEM}$) paired with class weighting could improve learning of difficult objects.
+We tested whether forcing the network to backpropagate exclusively through the 50\% hardest loss pixels ($\text{OHEM}$) paired with class weighting could force the model to focus on subtle foreground boundaries:
 \begin{itemize}
-    \item \textbf{Outcome:} Test mIoU dropped to \textbf{17.53\%} (-3.17\%), and pixel accuracy decreased to \textbf{62.70\%} (-11.00\%).
-    \item \textbf{Analysis:} Discarding half of the spatial pixels starved the 27k-parameter SSM of necessary gradient signals. The compact scan layers rely on continuous spatial transitions across the background to learn stable scanning patterns; aggressive pixel masking destabilized training.
+    \item \textbf{Setup:} Pixels in each batch are sorted by cross-entropy loss, and gradients are computed only over the top 50\% highest-loss pixels, filtering out easily classified road and sky regions.
+    \item \textbf{Outcome:} Test mIoU dropped sharply to \textbf{17.53\%} (-3.17\%), and overall pixel accuracy fell to \textbf{62.70\%} (-11.00\%).
+    \item \textbf{Analysis:} On an ultra-compact 27k-parameter architecture, discarding half of all spatial pixels caused severe gradient starvation. The compact state-space layers depend on continuous spatial transitions across the background to stabilize recurrent scanning parameters. Truncating background gradients destabilized optimization, leading to degraded feature representations.
 \end{itemize}
 
 \subsubsection{Experiment 2: Rare-Class Crop Sampling (RCS)}
-Our data audit revealed that over 90\% of random $512 \times 512$ crops contained zero pixels of rare vehicle or pedestrian classes. We implemented class-guided sampling: with 50\% probability, an image is sampled based on rare-class presence ($P(c) \propto f_c^{-0.5}$) and cropped around the target object, combined with moderate inverse-frequency loss weights ($w_c \le 5.0$).
+Our dataset audit revealed that over 90\% of random $512 \times 512$ training crops contained zero pixels of rare classes such as riders, trucks, or bicycles. We implemented class-guided crop sampling:
 \begin{itemize}
-    \item \textbf{Outcome:} Achieved a peak training mIoU of \textbf{23.52\%} and a final crop mIoU of \textbf{22.85\%}.
-    \item \textbf{Analysis:} Sampling around rare objects ensured that small classes consistently appeared in training batches. Frequency-Weighted IoU (FWIoU) dropped slightly from 61.49\% to 57.88\%, illustrating a natural trade-off: spending capacity on rare categories slightly reduces peak memorization on large background areas.
+    \item \textbf{Setup:} With 50\% probability, an image containing rare classes is sampled via $P(c) \propto f_c^{-0.5}$, and a jittered $512 \times 512$ crop centered around that object is extracted, combined with moderate inverse-frequency loss weights ($w_c \le 5.0$).
+    \item \textbf{Outcome:} Achieved a peak training mIoU of \textbf{23.52\%} and a final crop-evaluation mIoU of \textbf{22.85\%}.
+    \item \textbf{Analysis:} Sampling directly around rare classes ensured that rare foreground objects appeared consistently in training mini-batches. Frequency-Weighted IoU (FWIoU) decreased slightly from 61.49\% to 57.88\%, illustrating a natural trade-off: allocating limited parameter capacity to rare classes slightly reduces peak memorization on dominant road and sky pixels.
 \end{itemize}
 
-\subsubsection{Experiment 3: Illumination-Gated Skip Modulation (IG-Skip on ACDC)}
-We applied the IG-Skip mechanism to ACDC Night, adding 1,162 parameters (28,137 total, 1.057 GFLOPs).
+\subsubsection{Experiment 3: Illumination-Gated Skip Modulation on ACDC}
+We ported the IG-Skip architecture to the ACDC Night benchmark, adding 1,162 parameters (28,137 total, 1.057 GFLOPs):
 \begin{itemize}
+    \item \textbf{Setup:} The input image luminance prior is extracted, separable spatial-channel gates are computed across all skip junctions, and skip features are modulated prior to decoder addition.
     \item \textbf{Outcome:} Achieved \textbf{19.85\% mIoU} and \textbf{72.88\% pixel accuracy}.
-    \item \textbf{Analysis:} Per-class inspection revealed clear improvements on thin boundary structures: \textbf{fence IoU increased from 4.28\% to 6.74\% (+57.5\% relative gain)} and \textbf{wall IoU increased from 16.08\% to 17.77\% (+10.5\% relative gain)}. This confirms that optical luminance gating helps preserve boundary cues even with small training datasets.
+    \item \textbf{Analysis:} Detailed class examination revealed significant improvements in thin boundary structures: \textbf{fence IoU increased from 4.28\% to 6.74\% (+57.5\% relative gain)} and \textbf{wall IoU increased from 16.08\% to 17.77\% (+10.5\% relative gain)}. This confirms that optical luminance gating effectively restores structural edges corrupted by nighttime glare, even under low-data regimes.
 \end{itemize}
 
-\subsubsection{Experiment 4: Knowledge Distillation (NightKD)}
-To compensate for training from scratch without pretraining, we distilled representations from a Cityscapes-pretrained SegFormer-B2 teacher (27.5M parameters) into our 27k student model. To handle the domain shift from day to night, we applied: (i) an illumination gamma boost ($\gamma = 0.6$) to the teacher's input, and (ii) confidence thresholding ($\tau = 0.6$) to mask uncertain teacher predictions in dark regions.
+\subsubsection{Experiment 4: Confidence-Gated Knowledge Distillation (NightKD)}
+To mitigate the absence of pretraining, we distilled knowledge from a Cityscapes-pretrained SegFormer-B2 teacher (27.5M parameters) into our 27k student network. The distillation loss combines task loss with Kullback-Leibler divergence on softened logits:
+\begin{equation}
+\mathcal{L}_{\text{distill}} = (1 - \alpha) \mathcal{L}_{\text{total}} + \alpha \, \tau^2 \, \text{KL}\left(\sigma(\mathbf{Z}_S / \tau) \,\|\, \sigma(\mathbf{Z}_T / \tau)\right)
+\end{equation}
+with temperature $\tau = 4.0$ and weighting $\alpha = 0.5$. To handle the domain shift from daytime pretraining to nighttime evaluation, we introduced: (i) an illumination gamma adjustment ($\gamma = 0.6$) applied to the teacher's input to boost dark regions, and (ii) confidence masking ($\tau_{\text{conf}} = 0.6$) to filter out noisy teacher predictions in pitch-black areas:
 \begin{itemize}
-    \item \textbf{Outcome:} Achieved \textbf{20.10\% mIoU}, \textbf{73.86\% pixel accuracy} (+0.16\% over baseline), and \textbf{61.36\% FWIoU}, with \textbf{zero added inference cost} (exactly 26,975 parameters at runtime).
-    \item \textbf{Analysis:} Distillation improved prediction smoothness and background consistency. However, the 1000$\times$ capacity gap between the teacher (27.5M) and student (27k) prevented the student from capturing rich multi-class distributions without additional intermediate feature hints.
+    \item \textbf{Outcome:} Reached \textbf{20.10\% mIoU}, \textbf{73.86\% pixel accuracy} (+0.16\% over baseline), and \textbf{61.36\% FWIoU}, with \textbf{zero added inference cost} (26,975 parameters at test time).
+    \item \textbf{Analysis:} Distillation improved boundary smoothness and background consistency. However, the 1000$\times$ capacity disparity between the teacher (27.5M) and student (27k) prevented the student from capturing rich multi-class distributions without additional intermediate feature hints.
 \end{itemize}
 
-\section{Discussion: Capacity Limits of Sub-30k Models}
-Comparing results across both tracks provides two important observations:
+\section{Discussion: The Capacity Ceiling of Sub-30k SSMs}
+Synthesizing results across both benchmarks provides key insights for ultra-lightweight edge perception:
 \begin{enumerate}
-    \item \textbf{Dataset Size Matters:} On NightCity (2,998 training images), the 27k Mamba U-Net had enough training examples for IG-Skip to achieve a \textbf{+4.80\% mIoU gain (31.17\%)} and recover difficult categories.
-    \item \textbf{Capacity Ceiling with Small Data:} On ACDC Night (400 training images), four independent techniques (loss reweighting, crop sampling, skip gating, and distillation) all performed within a narrow range of \textbf{19.85\% to 20.70\% mIoU}. At 26,975 parameters trained from scratch, the network's capacity is fully occupied learning basic low-light contrast. Surpassing this threshold requires either pretraining on synthetic daytime data or moderately increasing model depth.
+    \item \textbf{Dataset Scale is Essential:} On NightCity (2,998 training images), the 27k-parameter Mamba U-Net received enough visual examples for IG-Skip to achieve a \textbf{+4.80\% mIoU gain (31.17\%)} and recover previously missed categories.
+    \item \textbf{The 20\% Capacity Ceiling under Data Scarcity:} On ACDC Night (400 training images), four independent techniques (loss reformulation, crop sampling, skip gating, and distillation) all converged within a narrow range of \textbf{19.85\% to 20.70\% mIoU}. At 26,975 parameters trained from scratch, the network's capacity is fully saturated learning basic low-light contrast. Overcoming this barrier requires either pre-training on synthetic data or moderately expanding model depth.
+    \item \textbf{Embedded Deployment Feasibility:} With a model size of only 0.11 MB (26,975 float32 weights) and an inference latency under 15 ms on a single GPU, this architecture can readily fit into internal SRAM caches of automotive microcontrollers, eliminating off-chip DRAM access bottlenecks.
 \end{enumerate}
 
-\section{Conclusion}
-In this project, we investigated ultra-lightweight 27k-parameter Vision Mamba models for nighttime semantic segmentation. We proposed Illumination-Gated Skip Modulation (IG-Skip), showing that input-guided lighting gating effectively suppresses headlight glare and boosts NightCity mIoU to 31.17\% at 66.74 FPS on a Tesla T4 GPU. On ACDC Night, our multi-axis experiments documented the capacity limits of sub-30k models trained from scratch on small datasets. Future work will explore pre-training on synthetic data before fine-tuning with illumination gating.
+\section{Conclusion and Future Work}
+In this project, we investigated ultra-lightweight 27k-parameter Vision Mamba architectures for real-time nighttime semantic scene parsing. We introduced Illumination-Gated Skip Modulation (IG-Skip), showing that input-guided lighting gating effectively suppresses headlight glare, raising NightCity mIoU to 31.17\% at 66.74 FPS on an Nvidia Tesla T4 GPU. On ACDC Night, our multi-axis experiments documented the capacity limits of sub-30k models trained from scratch on small datasets. Future work will explore pre-training on synthetic daytime datasets prior to illumination-gated fine-tuning.
 
 \begin{thebibliography}{00}
 \bibitem{tan2021nightcity} X. Tan, K. Ma, Y. Zhang, B. Yin, and X. Rong, ``Night-time scene parsing with a large real dataset,'' \emph{IEEE Trans. Image Process.}, vol. 30, pp. 9085--9098, 2021.
