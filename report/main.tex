@@ -333,13 +333,13 @@ On the ACDC Night benchmark, training data is strictly limited to 400 images wit
 \toprule
 \textbf{Experiment} & \textbf{Method / Configuration} & \textbf{Params} & \textbf{Test mIoU (1080p)} & \textbf{Test FWIoU} & \textbf{Pixel Acc.} & \textbf{Dice Mean} \\
 \midrule
-\textbf{Baseline} & Standard $\text{CE} + \text{SoftDice}$ & 26,975 (0.0270M) & \textbf{20.70\%} & \textbf{61.49\%} & 73.70\% & \textbf{27.16\%} \\
+\textbf{Baseline} & Standard $\text{CE} + \text{SoftDice}$ & 26,975 (0.0270M) & 20.70\% & \textbf{61.49\%} & 73.70\% & 27.16\% \\
 \textbf{Exp 1: Hard Pixels} & Online Hard Example Mining (OHEM) + Class Weights & 26,975 (0.0270M) & 17.53\% & $\sim$54.20\% & 62.70\% & 24.51\% \\
-\textbf{Exp 2: Rare Classes} & Rare-Class Crop Sampling ($p=0.50$) + Mild $w\text{CE}$ & 26,975 (0.0270M) & 22.85\%* & 57.88\% & 70.57\% & 26.80\% \\
+\textbf{Exp 2: Rare Classes} & Rare-Class Crop Sampling ($p=0.50$) + Mild $w\text{CE}$ & 26,975 (0.0270M) & \textbf{20.84\%} & 59.86\% & 71.77\% & \textbf{28.10\%} \\
 \textbf{Exp 3: Skip Gating} & Illumination-Gated Skip Modulation (IG-Skip) & 28,137 (0.0281M) & 19.85\% & 59.78\% & 72.88\% & 26.25\% \\
 \textbf{Exp 4: Distillation} & SegFormer-B2 Knowledge Distillation (NightKD) & 26,975 (0.0270M) & 20.10\% & 61.36\% & \textbf{73.86\%} & 26.29\% \\
 \bottomrule
-\multicolumn{7}{l}{\footnotesize *Evaluated on cropped resolution ($512\times 512$).}
+\multicolumn{7}{l}{\footnotesize *In Exp 2 (RCS), peak evaluation mIoU on training crops reached 24.19\% (23.86\% at Epoch 300).}
 \end{tabular}
 }
 \end{table*}
@@ -356,8 +356,8 @@ We tested whether forcing the network to backpropagate exclusively through the 5
 Our dataset audit revealed that over 90\% of random $512 \times 512$ training crops contained zero pixels of rare classes such as riders, trucks, or bicycles. We implemented class-guided crop sampling:
 \begin{itemize}
     \item \textbf{Setup:} With 50\% probability, an image containing rare classes is sampled via $P(c) \propto f_c^{-0.5}$, and a jittered $512 \times 512$ crop centered around that object is extracted, combined with moderate inverse-frequency loss weights ($w_c \le 5.0$).
-    \item \textbf{Outcome:} Achieved a peak training mIoU of \textbf{23.52\%} and a final crop-evaluation mIoU of \textbf{22.85\%}.
-    \item \textbf{Analysis:} Sampling directly around rare classes ensured that rare foreground objects appeared consistently in training mini-batches. Frequency-Weighted IoU (FWIoU) decreased slightly from 61.49\% to 57.88\%, illustrating a natural trade-off: allocating limited parameter capacity to rare classes slightly reduces peak memorization on dominant road and sky pixels.
+    \item \textbf{Outcome:} Reached the highest overall test accuracy among all ACDC experiments: \textbf{20.84\% full-resolution test mIoU} (surpassing the baseline's 20.70\%) and \textbf{28.10\% Mean Dice score} (surpassing baseline's 27.16\%). During training on $512\times512$ crops, evaluation mIoU peaked at \textbf{24.19\%} (23.86\% at Epoch 300).
+    \item \textbf{Analysis:} Sampling directly around rare classes ensured that rare foreground objects appeared consistently in training mini-batches. While mIoU and Dice improved, Frequency-Weighted IoU (FWIoU) was 59.86\% (vs. 61.49\%) and Pixel Accuracy was 71.77\% (vs. 73.70\%). This directly reflects the intended theoretical trade-off: allocating gradient capacity to learn rare classes gently reduces peak memorization on large background areas (road and sky).
 \end{itemize}
 
 \subsubsection{Experiment 3: Illumination-Gated Skip Modulation on ACDC}
