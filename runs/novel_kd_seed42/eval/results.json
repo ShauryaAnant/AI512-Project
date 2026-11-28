@@ -1,0 +1,80 @@
+{
+  "run_id": "best_checkpoint",
+  "dataset": "acdc_night",
+  "protocol": "train_400_test_106",
+  "model": "baseline",
+  "seed": 42,
+  "config": "configs/novel_kd_acdc_night.yaml",
+  "checkpoint": "/kaggle/working/best_checkpoint.pt",
+  "input_resolution": [
+    512,
+    512
+  ],
+  "eval_resolution": [
+    512,
+    1024
+  ],
+  "optimizer": "AdamW",
+  "lr": 0.01,
+  "epochs": 300,
+  "loss": "Combined_CE_SoftDice",
+  "metrics": {
+    "mIoU": 0.20099917335927198,
+    "FWIoU": 0.6136471366248581,
+    "per_class_IoU": {
+      "road": 0.8115722084136666,
+      "sidewalk": 0.44074794504619286,
+      "building": 0.5902272420888635,
+      "wall": 0.14934105716905652,
+      "fence": 0.036242867039216226,
+      "pole": 0.27979952848422407,
+      "traffic light": 0.16400376576405729,
+      "traffic sign": 0.051355313049776,
+      "vegetation": 0.5600823164656599,
+      "terrain": 0.026186521244032136,
+      "sky": 0.7094255290614224,
+      "person": 0.0,
+      "rider": 0.0,
+      "car": 0.0,
+      "truck": 0.0,
+      "bus": 0.0,
+      "train": 0.0,
+      "motorcycle": 0.0,
+      "bicycle": 0.0
+    },
+    "dice_mean": 0.2629352832127459,
+    "per_class_dice": {
+      "road": 0.8959865962222211,
+      "sidewalk": 0.6118321342211759,
+      "building": 0.7423181121127856,
+      "wall": 0.25987248299803833,
+      "fence": 0.06995052644901753,
+      "pole": 0.4372552454611615,
+      "traffic light": 0.28179250031275366,
+      "traffic sign": 0.09769354358576321,
+      "vegetation": 0.7180163643345653,
+      "terrain": 0.051036572205775156,
+      "sky": 0.8300163031389144,
+      "person": 0.0,
+      "rider": 0.0,
+      "car": 0.0,
+      "truck": 0.0,
+      "bus": 0.0,
+      "train": 0.0,
+      "motorcycle": 0.0,
+      "bicycle": 0.0
+    },
+    "mPA": 0.3507877717419907,
+    "pixel_acc": 0.7385969475490397,
+    "sensitivity_macro": 0.3507877717419907,
+    "specificity_macro": 0.9837956030237129,
+    "total_pixels_evaluated": 202435226
+  },
+  "efficiency": {
+    "params_M": 0.026975,
+    "flops_G": 1.023271222,
+    "flops_method": "analytical_with_custom_mamba_scan",
+    "batch_size": 1,
+    "device": "cuda"
+  }
+}

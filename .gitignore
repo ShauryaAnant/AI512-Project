@@ -37,3 +37,9 @@ Thumbs.db
 *.tar.gz
 *.zip
 *.tar
+
+data/
+kaggle/
+report/
+ROADMAP.md
+roadmap.md

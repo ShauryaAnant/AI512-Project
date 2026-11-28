@@ -1,0 +1,80 @@
+{
+  "run_id": "best",
+  "dataset": "acdc_night",
+  "protocol": "train_400_test_106",
+  "model": "baseline",
+  "seed": 42,
+  "config": "configs/novel_igskip_acdc_night.yaml",
+  "checkpoint": "/kaggle/working/novel_igskip_seed42/checkpoints/best.pth",
+  "input_resolution": [
+    512,
+    512
+  ],
+  "eval_resolution": [
+    512,
+    1024
+  ],
+  "optimizer": "AdamW",
+  "lr": 0.01,
+  "epochs": 300,
+  "loss": "Combined_CE_SoftDice",
+  "metrics": {
+    "mIoU": 0.19853136203461652,
+    "FWIoU": 0.5978060839042744,
+    "per_class_IoU": {
+      "road": 0.7874996040644853,
+      "sidewalk": 0.4199935796852833,
+      "building": 0.5720149889946038,
+      "wall": 0.17773622254142873,
+      "fence": 0.067366184511922,
+      "pole": 0.3030552587748635,
+      "traffic light": 0.1515312840497308,
+      "traffic sign": 0.04122910629764019,
+      "vegetation": 0.5336804779347275,
+      "terrain": 0.015216312852216436,
+      "sky": 0.7027728589508124,
+      "person": 0.0,
+      "rider": 0.0,
+      "car": 0.0,
+      "truck": 0.0,
+      "bus": 0.0,
+      "train": 0.0,
+      "motorcycle": 0.0,
+      "bicycle": 0.0
+    },
+    "dice_mean": 0.262492364646128,
+    "per_class_dice": {
+      "road": 0.8811186332839889,
+      "sidewalk": 0.5915429276495285,
+      "building": 0.7277474998637782,
+      "wall": 0.30182687623870985,
+      "fence": 0.1262288153577336,
+      "pole": 0.4651456747272514,
+      "traffic light": 0.26318222726320073,
+      "traffic sign": 0.07919314980396766,
+      "vegetation": 0.6959474096630454,
+      "terrain": 0.029976493993613462,
+      "sky": 0.8254452204316152,
+      "person": 0.0,
+      "rider": 0.0,
+      "car": 0.0,
+      "truck": 0.0,
+      "bus": 0.0,
+      "train": 0.0,
+      "motorcycle": 0.0,
+      "bicycle": 0.0
+    },
+    "mPA": 0.35065107931031925,
+    "pixel_acc": 0.7287854041766426,
+    "sensitivity_macro": 0.35065107931031925,
+    "specificity_macro": 0.9831239085079948,
+    "total_pixels_evaluated": 202435226
+  },
+  "efficiency": {
+    "params_M": 0.028137,
+    "flops_G": 1.05726751,
+    "flops_method": "analytical_with_custom_mamba_scan",
+    "batch_size": 1,
+    "device": "cuda"
+  }
+}
